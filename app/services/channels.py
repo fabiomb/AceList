@@ -53,6 +53,10 @@ def get_channel(session: Session, channel_id: int) -> Channel:
     return channel
 
 
+def find_channel_by_content_id(session: Session, content_id: str) -> Channel | None:
+    return session.scalars(select(Channel).where(Channel.content_id == content_id)).first()
+
+
 def list_channels(session: Session) -> list[Channel]:
     return list(session.scalars(select(Channel).order_by(Channel.title, Channel.id)))
 
