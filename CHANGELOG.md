@@ -4,6 +4,10 @@ Todos los cambios relevantes del proyecto se registran aquí. Formato basado en 
 
 ## [Sin publicar]
 
+## [1.0.0] - 2026-10-07
+
+Primera versión completa: catálogo, verificación, interfaz web, reproducción en VLC, ajustes, re-verificación en segundo plano e importación masiva.
+
 ### Agregado
 - Plan de desarrollo en `plan.md`: alcance, arquitectura, modelo de datos, fases y riesgos.
 - 22 issues de GitHub (#1 a #22) organizados en 7 fases con etiquetas `phase:0` a `phase:6`.
@@ -30,3 +34,7 @@ Todos los cambios relevantes del proyecto se registran aquí. Formato basado en 
 - Background checks (#19): `CheckRunner` verifies channels in a thread pool limited by the new "Verificaciones simultáneas" setting (`ACELIST_CHECK_CONCURRENCY`, default 2). A crashing check is counted as failed without stopping the rest, and checks requested while a batch runs join it once. The list can check every channel it shows with the current filters, the detail's "Verificar de nuevo" no longer blocks, and a progress panel on every page polls the batch and reloads the page when it ends. Tests now point at an unresolvable engine by default so they can never reach a real one.
 - Bulk import (#20): `/import` takes a pasted list with one Content ID or link per line (also M3U lists, where `#EXTINF` names the next link) and creates a channel per new one, using the text around the link as its title and an optional shared category, language and country. A summary lists what was created, the duplicates (already in the catalog or repeated in the list, with the line they repeat) and the invalid lines, and the new channels are verified in the background. Pages can opt out of the reload that follows background checks, so the summary stays on screen.
 - Integration tests (#21): `tests/test_integration.py` drives the web app end to end against an engine simulated over HTTP, with a different behavior per Content ID: alive (with a real `capture_screenshot` run on a fake ffmpeg), no peers, unknown hash, engine down, timeout, engine dropping mid-check, unexpected answers, missing ffmpeg, a mixed bulk import and a link that dies. CI now measures coverage with `pytest-cov` and fails below 95% (99% when set). Tests run with their own temporary data directory.
+- Usage documentation and Windows launcher (#22): the README covers requirements, installation, use, channel states, settings, security and troubleshooting. `start.bat` / `start.ps1` create the virtual environment on first run (reinstalling only when `pyproject.toml` changes), apply the migrations, start the server and open the browser once it answers (`-Port`, `-NoBrowser`); if AceList is already running they only open the browser. The server port is configurable with `ACELIST_PORT`.
+
+[Sin publicar]: https://github.com/fabiomb/AceList/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/fabiomb/AceList/releases/tag/v1.0.0
