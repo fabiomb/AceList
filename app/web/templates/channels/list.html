@@ -2,11 +2,77 @@
 
 {% block title %}Canales · AceList{% endblock %}
 
+{% macro sort_header(key, label, extra_class="") %}
+{% set active = query.sort.value == key %}
+<th scope="col"{% if extra_class %} class="{{ extra_class }}"{% endif %}{% if active %} aria-sort="{{ 'descending' if query.descending else 'ascending' }}"{% endif %}>
+  <a class="sort{% if active %} active{% endif %}" href="{{ sort_links[key] }}">{{ label }}{% if active %} <span aria-hidden="true">{{ "↓" if query.descending else "↑" }}</span>{% endif %}</a>
+</th>
+{% endmacro %}
+
 {% block content %}
 <div class="page-head">
   <h1>Canales</h1>
   <a class="button primary" href="{{ url_for('channel_new') }}">Agregar canal</a>
 </div>
+
+{% if catalog_empty %}
+<section class="empty-state">
+  <p class="empty-title">Todavía no hay canales en el catálogo.</p>
+  <p>Cuando agregues un Content ID o un enlace <code>acestream://</code>, aparecerá aquí con su estado y su última verificación.</p>
+  <p><a class="button primary" href="{{ url_for('channel_new') }}">Agregar el primer canal</a></p>
+</section>
+{% else %}
+<form class="filters" method="get" action="{{ url_for('channel_list') }}" role="search">
+  <input type="hidden" name="sort" value="{{ query.sort.value }}">
+  <input type="hidden" name="dir" value="{{ 'desc' if query.descending else 'asc' }}">
+  <div class="field">
+    <label for="q">Buscar</label>
+    <input id="q" name="q" type="search" placeholder="Título o Content ID" value="{{ query.text or '' }}">
+  </div>
+  <div class="field">
+    <label for="f-category">Categoría</label>
+    <select id="f-category" name="category">
+      <option value="">Todas</option>
+      {% for category in categories %}
+      <option value="{{ category.id }}"{% if query.category_id == category.id %} selected{% endif %}>{{ category.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="f-language">Idioma</label>
+    <select id="f-language" name="language">
+      <option value="">Todos</option>
+      {% for code in languages %}
+      <option value="{{ code }}"{% if query.language == code %} selected{% endif %}>{{ language_name(code) }} ({{ code }})</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="f-country">País</label>
+    <select id="f-country" name="country">
+      <option value="">Todos</option>
+      {% for code in countries %}
+      <option value="{{ code }}"{% if query.country == code %} selected{% endif %}>{{ country_name(code) }} ({{ code }})</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="f-status">Estado</label>
+    <select id="f-status" name="status">
+      <option value="">Todos</option>
+      {% for status, label in status_labels.items() %}
+      <option value="{{ status.value }}"{% if query.status == status.value %} selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+      <option value="unchecked"{% if query.status == "unchecked" %} selected{% endif %}>Sin verificar</option>
+    </select>
+  </div>
+  <div class="filter-actions">
+    <button type="submit" class="button">Filtrar</button>
+    {% if filtered %}<a href="{{ url_for('channel_list') }}">Quitar filtros</a>{% endif %}
+  </div>
+</form>
+
+<p class="result-count">{{ rows | length }} {{ "canal" if rows | length == 1 else "canales" }}{% if filtered %} con estos filtros{% endif %}</p>
 
 {% if rows %}
 <div class="table-wrap">
@@ -14,14 +80,15 @@
     <thead>
       <tr>
         <th scope="col">Captura</th>
-        <th scope="col">Título</th>
+        {{ sort_header("title", "Título") }}
         <th scope="col">Hash</th>
         <th scope="col">Categoría</th>
         <th scope="col">Idioma</th>
         <th scope="col">País</th>
-        <th scope="col">Estado</th>
-        <th scope="col" class="num">Peers</th>
-        <th scope="col">Última verificación</th>
+        {{ sort_header("status", "Estado") }}
+        {{ sort_header("peers", "Peers", "num") }}
+        {{ sort_header("checked", "Última verificación") }}
+        {{ sort_header("created", "Alta") }}
         <th scope="col"><span class="visually-hidden">Acciones</span></th>
       </tr>
     </thead>
@@ -57,6 +124,7 @@
         <td>
           {% if check %}<time datetime="{{ check.checked_at.isoformat() }}">{{ check.checked_at | localtime }}</time>{% else %}Nunca{% endif %}
         </td>
+        <td><time datetime="{{ channel.created_at.isoformat() }}">{{ channel.created_at | localtime }}</time></td>
         <td class="row-actions">
           <a href="{{ url_for('channel_edit', channel_id=channel.id) }}">Editar</a>
           <a class="danger-link" href="{{ url_for('channel_delete', channel_id=channel.id) }}">Borrar</a>
@@ -68,9 +136,9 @@
 </div>
 {% else %}
 <section class="empty-state">
-  <p class="empty-title">Todavía no hay canales en el catálogo.</p>
-  <p>Cuando agregues un Content ID o un enlace <code>acestream://</code>, aparecerá aquí con su estado y su última verificación.</p>
-  <p><a class="button primary" href="{{ url_for('channel_new') }}">Agregar el primer canal</a></p>
+  <p class="empty-title">Ningún canal coincide con estos filtros.</p>
+  <p><a href="{{ url_for('channel_list') }}">Quitar filtros</a></p>
 </section>
+{% endif %}
 {% endif %}
 {% endblock %}
