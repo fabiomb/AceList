@@ -94,16 +94,18 @@ class ChannelForm:
         return ChannelData(title, content_id, category_id, new_category, language, country)
 
 
-def resolve_category(session: Session, data: ChannelData) -> int | None:
+def resolve_category(
+    session: Session, category_id: int | None, new_category: str | None
+) -> int | None:
     """Category id to store, creating the new category unless one has that name already."""
-    if data.new_category is None:
-        return data.category_id
+    if new_category is None:
+        return category_id
     existing = session.scalars(
-        select(Category).where(func.lower(Category.name) == data.new_category.lower())
+        select(Category).where(func.lower(Category.name) == new_category.lower())
     ).first()
     if existing is not None:
         return existing.id
-    return categories.create_category(session, data.new_category).id
+    return categories.create_category(session, new_category).id
 
 
 # (minimum, maximum) accepted for each number, in seconds or peers.

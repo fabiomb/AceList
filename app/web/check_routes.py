@@ -72,7 +72,9 @@ def checks_start(
 def checks_status(request: Request, runner: CheckRunnerDep, watching: str = ""):
     """The progress panel, polled while a batch runs."""
     batch = runner.current()
-    response = templates.TemplateResponse(request, "_batch_status.html", {"batch": batch})
+    response = templates.TemplateResponse(
+        request, "_batch_status.html", {"batch": batch, "watch": watching}
+    )
     if batch is not None and batch.finished and batch.id == watching:
         # The page that watched the batch shows stale states: reload it once.
         response.headers["HX-Refresh"] = "true"
@@ -82,4 +84,6 @@ def checks_status(request: Request, runner: CheckRunnerDep, watching: str = ""):
 @router.post("/dismiss", response_class=HTMLResponse, name="checks_dismiss")
 def checks_dismiss(request: Request, runner: CheckRunnerDep):
     runner.dismiss()
-    return templates.TemplateResponse(request, "_batch_status.html", {"batch": runner.current()})
+    return templates.TemplateResponse(
+        request, "_batch_status.html", {"batch": runner.current(), "watch": ""}
+    )

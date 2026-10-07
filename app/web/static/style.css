@@ -345,3 +345,19 @@ form.inline { display: inline; }
 .batch progress { flex: 1; min-width: 160px; max-width: 400px; accent-color: var(--accent); }
 .batch-counts { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 0; }
 .batch-counts:empty { display: none; }
+
+.field textarea {
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: 13px/1.5 ui-monospace, Consolas, monospace;
+  resize: vertical;
+}
+
+.import-summary { margin-bottom: 16px; }
+.import-summary h2 { margin-top: 0; }
+.import-summary h3 { font-size: 15px; margin: 16px 0 6px; }
+.import-list { margin: 0; padding-left: 20px; }
+.import-list li { margin: 2px 0; }

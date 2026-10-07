@@ -111,3 +111,15 @@ def test_starting_checks_from_another_site_is_rejected(web, two):
 
     assert response.status_code == 403
     assert app.state.check_runner.current() is None
+
+
+def test_import_page_never_asks_for_a_reload(web, blocked):
+    page = web.get("/import").text
+
+    assert 'hx-trigger="every 1s"' in page
+    assert '"watching": ""' in page
+
+
+def test_polling_keeps_what_the_page_watches(web, blocked):
+    assert f'"watching": "{blocked.id}"' in web.get(f"/checks/status?watching={blocked.id}").text
+    assert '"watching": ""' in web.get("/checks/status?watching=").text
