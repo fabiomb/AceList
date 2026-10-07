@@ -81,6 +81,8 @@ Evolución observada:
 
 Campos útiles: `status`, `peers`, `speed_down` (unidad no verificada), `downloaded` (bytes), `is_live`, `infohash`.
 
+Justo después de `getstream`, la primera consulta puede devolver `{"response": {}, "error": null}`, antes incluso de `idle` (observado al probar el cliente contra el engine real). Se interpreta como `idle`.
+
 ### Detener la sesión
 
 ```
