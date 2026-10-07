@@ -10,3 +10,4 @@ Todos los cambios relevantes del proyecto se registran aquí. Formato basado en 
 - `README.md` con funcionalidades previstas, requisitos y hoja de ruta.
 - `CHANGELOG.md`.
 - Project skeleton (#1): `pyproject.toml`, package `app/` with a `/health` endpoint bound to `127.0.0.1`, `.gitignore`, ruff and pytest configuration, and a first test suite.
+- GitHub Actions workflow (#2) running ruff and pytest on Python 3.11 and 3.12 over `windows-latest`.
