@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}Borrar canal · AceList{% endblock %}
+
+{% block content %}
+<h1>Borrar canal</h1>
+
+<form class="card form" method="post" action="{{ url_for('channel_destroy', channel_id=channel.id) }}">
+  <p>¿Seguro que quieres borrar <strong>{{ channel.title }}</strong> (<code>{{ channel.content_id }}</code>)?</p>
+  <p class="hint">
+    {% if check_count %}Se borrarán también sus {{ check_count }} verificaciones y las capturas guardadas.{% else %}El canal no tiene verificaciones.{% endif %}
+    Esta acción no se puede deshacer.
+  </p>
+  <div class="actions">
+    <button type="submit" class="button danger">Borrar</button>
+    <a class="button" href="{{ url_for('channel_list') }}">Cancelar</a>
+  </div>
+</form>
+{% endblock %}

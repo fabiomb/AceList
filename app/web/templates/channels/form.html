@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}{{ "Editar canal" if channel else "Agregar canal" }} · AceList{% endblock %}
+
+{% macro field_error(name) %}
+  {% if form.errors[name] %}<p class="field-error" id="{{ name }}-error">{{ form.errors[name] }}</p>{% endif %}
+{% endmacro %}
+
+{% macro invalid(name) %}{% if form.errors[name] %} aria-invalid="true" aria-describedby="{{ name }}-error"{% endif %}{% endmacro %}
+
+{% block content %}
+<h1>{{ "Editar canal" if channel else "Agregar canal" }}</h1>
+
+{% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
+{% if form.errors %}<p class="form-error" role="alert">Revisa los campos marcados.</p>{% endif %}
+
+<form class="card form" method="post"
+      action="{{ url_for('channel_update', channel_id=channel.id) if channel else url_for('channel_create') }}"
+      hx-disabled-elt="find button[type=submit]">
+  <div class="field">
+    <label for="title">Título</label>
+    <input id="title" name="title" type="text" maxlength="200" required value="{{ form.title }}"{{ invalid("title") }}>
+    {{ field_error("title") }}
+  </div>
+
+  <div class="field">
+    <label for="link">Content ID o enlace</label>
+    <input id="link" name="link" type="text" required spellcheck="false" autocomplete="off"
+           placeholder="acestream://… o 40 caracteres hexadecimales" value="{{ form.link }}"{{ invalid("link") }}>
+    {{ field_error("link") }}
+    <p class="hint">{{ "Si cambias el Content ID se verifica de nuevo; el historial se conserva." if channel else "Al guardar se verifica con el engine, lo que puede tardar unos segundos." }}</p>
+  </div>
+
+  <div class="field-row">
+    <div class="field">
+      <label for="category_id">Categoría</label>
+      <select id="category_id" name="category_id"{{ invalid("category_id") }}>
+        <option value="">Sin categoría</option>
+        {% for category in categories %}
+        <option value="{{ category.id }}"{% if form.category_id == category.id|string %} selected{% endif %}>{{ category.name }}</option>
+        {% endfor %}
+      </select>
+      {{ field_error("category_id") }}
+    </div>
+    <div class="field">
+      <label for="new_category">o nueva categoría</label>
+      <input id="new_category" name="new_category" type="text" maxlength="100" value="{{ form.new_category }}">
+    </div>
+  </div>
+
+  <div class="field-row">
+    <div class="field">
+      <label for="language">Idioma</label>
+      <select id="language" name="language"{{ invalid("language") }}>
+        <option value="">Sin idioma</option>
+        {% for code, name in language_choices() %}
+        <option value="{{ code }}"{% if form.language|lower == code %} selected{% endif %}>{{ name }} ({{ code }})</option>
+        {% endfor %}
+      </select>
+      {{ field_error("language") }}
+    </div>
+    <div class="field">
+      <label for="country">País</label>
+      <select id="country" name="country"{{ invalid("country") }}>
+        <option value="">Sin país</option>
+        {% for code, name in country_choices() %}
+        <option value="{{ code }}"{% if form.country|upper == code %} selected{% endif %}>{{ name }} ({{ code }})</option>
+        {% endfor %}
+      </select>
+      {{ field_error("country") }}
+    </div>
+  </div>
+
+  <div class="actions">
+    <button type="submit" class="button primary">{{ "Guardar cambios" if channel else "Agregar y verificar" }}</button>
+    <a class="button" href="{{ url_for('channel_list') }}">Cancelar</a>
+    <span class="busy" aria-live="polite">Guardando…</span>
+  </div>
+</form>
+{% endblock %}
