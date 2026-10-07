@@ -72,7 +72,14 @@
   </div>
 </form>
 
-<p class="result-count">{{ rows | length }} {{ "canal" if rows | length == 1 else "canales" }}{% if filtered %} con estos filtros{% endif %}</p>
+<div class="list-bar">
+  <p class="result-count">{{ rows | length }} {{ "canal" if rows | length == 1 else "canales" }}{% if filtered %} con estos filtros{% endif %}</p>
+  {% if rows %}
+  <form method="post" action="{{ url_for('checks_start') }}{% if request.url.query %}?{{ request.url.query }}{% endif %}">
+    <button type="submit" class="button">Verificar {{ "este canal" if rows | length == 1 else ("los " ~ (rows | length) ~ " canales") }}</button>
+  </form>
+  {% endif %}
+</div>
 
 {% if rows %}
 <div class="table-wrap">

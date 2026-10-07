@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -9,8 +10,9 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import DATA_DIR
 from app.db.session import make_engine, make_session_factory
+from app.services.batch import CheckRunner
 from app.services.screenshots import SCREENSHOTS_SUBDIR
-from app.web import settings_routes
+from app.web import check_routes, settings_routes
 from app.web.routes import router
 from app.web.templating import STATIC_DIR
 
@@ -30,7 +32,14 @@ class OptionalStaticFiles(StaticFiles):
             await super().check_config()
 
 
-app = FastAPI(title="AceList")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+    # Queued background checks are dropped; running ones finish on their own.
+    app.state.check_runner.shutdown()
+
+
+app = FastAPI(title="AceList", lifespan=lifespan)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=ALLOWED_HOSTS)
 
 
@@ -47,6 +56,7 @@ async def reject_cross_site_writes(request: Request, call_next):
 
 
 app.state.session_factory = make_session_factory(make_engine())
+app.state.check_runner = CheckRunner()
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 # Only the screenshots folder is served, never the rest of the data directory.
@@ -58,6 +68,7 @@ app.mount(
 )
 app.include_router(router)
 app.include_router(settings_routes.router)
+app.include_router(check_routes.router)
 
 
 @app.get("/health")

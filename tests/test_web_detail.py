@@ -72,13 +72,16 @@ def test_list_links_titles_to_the_detail(web, db):
     assert f'<a href="http://127.0.0.1/channels/{channel.id}">Uno</a>' in page
 
 
-def test_check_again_stores_a_new_check_and_returns_to_the_detail(web, db, engine_down):
+def test_check_again_stores_a_new_check_and_returns_to_the_detail(
+    web, db, engine_down, wait_for_checks
+):
     channel = channels.create_channel(db, title="Uno", content_id=HASH_A)
 
     response = web.post(f"/channels/{channel.id}/check", follow_redirects=False)
 
     assert response.status_code == 303
     assert response.headers["location"] == f"http://127.0.0.1/channels/{channel.id}"
+    wait_for_checks()
     [check] = checks.list_checks(db, channel.id)
     assert check.status == CheckStatus.ERROR
     assert engine_down.called

@@ -14,6 +14,7 @@ def test_saved_settings_are_loaded_back(db):
         min_peers=3,
         check_timeout=45,
         screenshot_timeout=12,
+        check_concurrency=4,
         vlc_path="C:/VLC/vlc.exe",
         ffmpeg_path="C:/ffmpeg/ffmpeg.exe",
         acestream_path="C:/ace/ace_engine.exe",

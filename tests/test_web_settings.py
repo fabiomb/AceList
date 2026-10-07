@@ -5,7 +5,7 @@ from app.main import app
 from app.services import channels
 from app.services.settings import AppSettings, load_settings, save_settings
 from app.web import settings_routes
-from app.web.deps import get_engine_client
+from app.web.deps import get_engine_factory
 
 HASH_A = "78266c15035d0ad8cbc58f821733931e1de434ab"
 
@@ -32,6 +32,7 @@ def form(**fields):
         "min_peers": "1",
         "check_timeout": "20",
         "screenshot_timeout": "30",
+        "check_concurrency": "2",
         "vlc_path": "",
         "ffmpeg_path": "",
         "acestream_path": "",
@@ -151,9 +152,9 @@ def test_engine_test_rejects_a_bad_url_without_any_request(web, detected, respx_
     assert not respx_mock.calls
 
 
-def test_saved_engine_url_is_used_for_checks(web, db, respx_mock):
+def test_saved_engine_url_is_used_for_checks(web, db, respx_mock, wait_for_checks):
     # The real engine client dependency, not the test double.
-    app.dependency_overrides.pop(get_engine_client, None)
+    app.dependency_overrides.pop(get_engine_factory, None)
     save_settings(db, AppSettings(engine_url="http://10.0.0.3:7000", engine_timeout=1))
     channel = channels.create_channel(db, title="Uno", content_id=HASH_A)
     route = respx_mock.get(url__startswith="http://10.0.0.3:7000").mock(
@@ -161,6 +162,7 @@ def test_saved_engine_url_is_used_for_checks(web, db, respx_mock):
     )
 
     web.post(f"/channels/{channel.id}/check")
+    wait_for_checks()
 
     assert route.called
 

@@ -112,7 +112,9 @@ _RANGES = {
     "min_peers": (0, 1000),
     "check_timeout": (5, 600),
     "screenshot_timeout": (5, 300),
+    "check_concurrency": (1, 8),
 }
+_INTEGERS = {"min_peers", "check_concurrency"}
 _PATHS = ("vlc_path", "ffmpeg_path", "acestream_path")
 
 
@@ -125,6 +127,7 @@ class SettingsForm:
     min_peers: str = ""
     check_timeout: str = ""
     screenshot_timeout: str = ""
+    check_concurrency: str = ""
     vlc_path: str = ""
     ffmpeg_path: str = ""
     acestream_path: str = ""
@@ -138,6 +141,7 @@ class SettingsForm:
             min_peers=str(settings.min_peers),
             check_timeout=f"{settings.check_timeout:g}",
             screenshot_timeout=f"{settings.screenshot_timeout:g}",
+            check_concurrency=str(settings.check_concurrency),
             vlc_path=settings.vlc_path or "",
             ffmpeg_path=settings.ffmpeg_path or "",
             acestream_path=settings.acestream_path or "",
@@ -159,11 +163,11 @@ class SettingsForm:
         for name, (low, high) in _RANGES.items():
             raw = getattr(self, name).strip().replace(",", ".")
             try:
-                number = int(raw) if name == "min_peers" else float(raw)
+                number = int(raw) if name in _INTEGERS else float(raw)
             except ValueError:
                 number = None
             if number is None or not low <= number <= high:
-                kind = "un número entero" if name == "min_peers" else "un número"
+                kind = "un número entero" if name in _INTEGERS else "un número"
                 self.errors[name] = f"Debe ser {kind} entre {low} y {high}."
             values[name] = number
 

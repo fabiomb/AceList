@@ -1,0 +1,23 @@
+{# Progress of background checks; polled while they run. #}
+{% if batch is none %}
+<div id="batch-status"></div>
+{% elif not batch.finished %}
+<div id="batch-status" class="batch running" role="status"
+     hx-get="{{ url_for('checks_status') }}" hx-vals='{"watching": "{{ batch.id }}"}'
+     hx-trigger="every 1s" hx-swap="outerHTML">
+  <div class="batch-line">
+    <strong>Verificando canales: {{ batch.done }} de {{ batch.total }}</strong>
+    <progress max="{{ batch.total }}" value="{{ batch.done }}">{{ batch.done }} de {{ batch.total }}</progress>
+  </div>
+  {% include "_batch_counts.html" %}
+</div>
+{% else %}
+<div id="batch-status" class="batch finished" role="status">
+  <div class="batch-line">
+    <strong>Verificación terminada: {{ batch.total }} {{ "canal" if batch.total == 1 else "canales" }}</strong>
+    <button type="button" class="link-button" hx-post="{{ url_for('checks_dismiss') }}"
+            hx-target="#batch-status" hx-swap="outerHTML">Cerrar</button>
+  </div>
+  {% include "_batch_counts.html" %}
+</div>
+{% endif %}

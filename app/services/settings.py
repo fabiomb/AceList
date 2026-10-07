@@ -4,7 +4,14 @@ from dataclasses import dataclass, fields, replace
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app.config import ENGINE_TIMEOUT, ENGINE_URL, FFMPEG_PATH, SCREENSHOT_TIMEOUT, VLC_PATH
+from app.config import (
+    CHECK_CONCURRENCY,
+    ENGINE_TIMEOUT,
+    ENGINE_URL,
+    FFMPEG_PATH,
+    SCREENSHOT_TIMEOUT,
+    VLC_PATH,
+)
 from app.db.models import Setting
 from app.services.screenshots import CaptureSettings
 from app.services.verification import VerificationSettings
@@ -22,6 +29,7 @@ class AppSettings:
     min_peers: int = VerificationSettings.min_peers
     check_timeout: float = VerificationSettings.timeout
     screenshot_timeout: float = SCREENSHOT_TIMEOUT
+    check_concurrency: int = CHECK_CONCURRENCY
     vlc_path: str | None = VLC_PATH
     ffmpeg_path: str | None = FFMPEG_PATH
     acestream_path: str | None = None  # the installed engine, for reference
@@ -39,6 +47,7 @@ _PARSERS: dict[str, Callable[[str], object]] = {
     "min_peers": int,
     "check_timeout": float,
     "screenshot_timeout": float,
+    "check_concurrency": int,
     "vlc_path": str,
     "ffmpeg_path": str,
     "acestream_path": str,

@@ -14,4 +14,7 @@ ENGINE_TIMEOUT = float(os.environ.get("ACELIST_ENGINE_TIMEOUT", "15"))
 FFMPEG_PATH = os.environ.get("ACELIST_FFMPEG_PATH")  # None: look it up on PATH
 SCREENSHOT_TIMEOUT = float(os.environ.get("ACELIST_SCREENSHOT_TIMEOUT", "30"))
 
+# Channels verified at once in the background; each one is a live engine session.
+CHECK_CONCURRENCY = int(os.environ.get("ACELIST_CHECK_CONCURRENCY", "2"))
+
 VLC_PATH = os.environ.get("ACELIST_VLC_PATH")  # None: usual install folders, then PATH
