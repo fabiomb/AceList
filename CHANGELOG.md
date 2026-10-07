@@ -11,3 +11,4 @@ Todos los cambios relevantes del proyecto se registran aquí. Formato basado en 
 - `CHANGELOG.md`.
 - Project skeleton (#1): `pyproject.toml`, package `app/` with a `/health` endpoint bound to `127.0.0.1`, `.gitignore`, ruff and pytest configuration, and a first test suite.
 - GitHub Actions workflow (#2) running ruff and pytest on Python 3.11 and 3.12 over `windows-latest`.
+- `docs/engine-api.md` (#3): Acestream engine HTTP API observed against engine 3.1.74, including session states, error behavior, the Content ID vs infohash difference, and a validated ffmpeg frame capture.
