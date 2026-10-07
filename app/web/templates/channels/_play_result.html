@@ -1,0 +1,5 @@
+{% if error %}
+<p class="notice notice-error" role="alert">{{ error }}</p>
+{% else %}
+<p class="notice notice-ok" role="status">Abriendo «{{ channel.title }}» en VLC…</p>
+{% endif %}

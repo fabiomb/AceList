@@ -291,3 +291,26 @@ code.wrap { word-break: break-all; }
 .history .message { white-space: normal; color: var(--muted); font-size: 13px; }
 .channels .title a { color: var(--text); text-decoration: none; }
 .channels .title a:hover { color: var(--accent); }
+
+form.inline { display: inline; }
+
+.link-button {
+  margin-left: 12px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}
+
+.link-button:disabled { opacity: 0.6; cursor: progress; }
+
+.notice {
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border-radius: 6px;
+}
+
+.notice-ok { background: var(--alive-bg); color: var(--alive-fg); }
+.notice-error { background: var(--bad-bg); color: var(--bad-fg); }
