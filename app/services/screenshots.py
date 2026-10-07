@@ -1,6 +1,7 @@
 import os
 import shutil
 import subprocess
+import uuid
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
@@ -50,8 +51,9 @@ def capture_screenshot(
             "ffmpeg not found: install it and add it to PATH, or set ACELIST_FFMPEG_PATH"
         )
 
-    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
-    relative = f"{SCREENSHOTS_SUBDIR}/{content_id}_{stamp}.jpg"
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    # The Windows clock is coarse, so the timestamp alone can repeat; the suffix cannot.
+    relative = f"{SCREENSHOTS_SUBDIR}/{content_id}_{stamp}_{uuid.uuid4().hex[:8]}.jpg"
     final = data_dir / relative
     partial = final.with_name(final.stem + ".part.jpg")
     final.parent.mkdir(parents=True, exist_ok=True)

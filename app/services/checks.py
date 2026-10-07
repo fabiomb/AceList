@@ -5,6 +5,9 @@ from sqlalchemy.orm import Session
 
 from app.db.models import Check, CheckStatus
 from app.services.channels import get_channel
+from app.services.verification import VerificationResult
+
+_MAX_MESSAGE = 500
 
 
 def add_check(
@@ -35,6 +38,30 @@ def add_check(
     session.add(check)
     session.commit()
     return check
+
+
+def record_verification(
+    session: Session,
+    channel_id: int,
+    result: VerificationResult,
+    *,
+    screenshot_path: str | None = None,
+    checked_at: datetime | None = None,
+) -> Check:
+    """Stores a verification outcome as the newest entry of the channel's history."""
+    message = result.error_message
+    return add_check(
+        session,
+        channel_id,
+        status=result.status,
+        peers=result.peers,
+        speed_down=result.speed_down,
+        infohash=result.infohash,
+        screenshot_path=screenshot_path,
+        # Matches the column length so a long engine message cannot break the insert.
+        error_message=message[:_MAX_MESSAGE] if message else None,
+        checked_at=checked_at,
+    )
 
 
 def list_checks(session: Session, channel_id: int) -> list[Check]:
