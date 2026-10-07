@@ -19,7 +19,7 @@ def _clean_title(title: str) -> str:
     return title
 
 
-def _check_category(session: Session, category_id: int | None) -> None:
+def check_category(session: Session, category_id: int | None) -> None:
     if category_id is not None and session.get(Category, category_id) is None:
         raise NotFoundError(f"category not found: {category_id}")
 
@@ -34,7 +34,7 @@ def create_channel(
     country: str | None = None,
 ) -> Channel:
     """`content_id` must already be normalized (40 lowercase hex characters)."""
-    _check_category(session, category_id)
+    check_category(session, category_id)
     channel = Channel(
         title=_clean_title(title),
         content_id=content_id,
@@ -71,7 +71,7 @@ def update_channel(session: Session, channel_id: int, **changes) -> Channel:
     if "title" in changes:
         changes["title"] = _clean_title(changes["title"])
     if "category_id" in changes:
-        _check_category(session, changes["category_id"])
+        check_category(session, changes["category_id"])
     if "language" in changes:
         changes["language"] = normalize_language(changes["language"])
     if "country" in changes:

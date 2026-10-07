@@ -1,9 +1,10 @@
-{# Progress of background checks; polled while they run. #}
+{# Progress of background checks; polled while they run. `watch` is the batch id when the
+   page shows channel states and must reload once the batch ends, or "" when it must not. #}
 {% if batch is none %}
 <div id="batch-status"></div>
 {% elif not batch.finished %}
 <div id="batch-status" class="batch running" role="status"
-     hx-get="{{ url_for('checks_status') }}" hx-vals='{"watching": "{{ batch.id }}"}'
+     hx-get="{{ url_for('checks_status') }}" hx-vals='{"watching": "{{ watch }}"}'
      hx-trigger="every 1s" hx-swap="outerHTML">
   <div class="batch-line">
     <strong>Verificando canales: {{ batch.done }} de {{ batch.total }}</strong>
