@@ -57,4 +57,5 @@ El seguimiento se hace con [issues de GitHub](https://github.com/fabiomb/AceList
 
 - [idea.md](idea.md): idea original.
 - [plan.md](plan.md): alcance, arquitectura, modelo de datos y fases.
+- [docs/engine-api.md](docs/engine-api.md): API del engine de Acestream observada en la práctica.
 - [CHANGELOG.md](CHANGELOG.md): registro de cambios.
