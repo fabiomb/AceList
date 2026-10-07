@@ -219,6 +219,16 @@ def test_stats_while_downloading(client, session, respx_mock):
     )
 
 
+def test_stats_with_empty_response_right_after_start_is_idle(client, session, respx_mock):
+    # Observed on the real engine: the very first stat call can return `{"response": {}}`.
+    respx_mock.get(session.stat_url).respond(json={"response": {}, "error": None})
+
+    stats = client.stats(session)
+
+    assert stats.status == "idle"
+    assert (stats.peers, stats.speed_down, stats.downloaded) == (None, None, None)
+
+
 def test_stats_without_status_is_a_protocol_error(client, session, respx_mock):
     respx_mock.get(session.stat_url).respond(json={"response": {"peers": 1}, "error": None})
     with pytest.raises(EngineProtocolError):

@@ -111,6 +111,9 @@ class EngineClient:
 
     def stats(self, session: StreamSession) -> StreamStats:
         response = self._payload(self._get_json(session.stat_url), "response")
+        if not response:
+            # Right after start the engine can answer with an empty object, before `idle`.
+            return StreamStats(status="idle", peers=None, speed_down=None, downloaded=None)
         try:
             return StreamStats(
                 status=str(response["status"]),
