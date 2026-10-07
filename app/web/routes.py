@@ -5,10 +5,11 @@ from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
-from app.db.models import Channel, Check
-from app.services import catalog, categories, channels
-from app.services.checks import latest_checks
+from app.db.models import Channel, Check, CheckStatus
+from app.services import catalog, categories, channels, listing
 from app.services.errors import NotFoundError, ServiceError
+from app.services.iso import country_name, language_name
+from app.services.listing import DEFAULT_DESCENDING, UNCHECKED, ChannelQuery, SortKey
 from app.services.screenshots import SCREENSHOTS_SUBDIR
 from app.web.deps import EngineDep, SessionDep
 from app.web.forms import ChannelForm, resolve_category
@@ -17,6 +18,8 @@ from app.web.templating import templates
 router = APIRouter()
 
 FormField = Annotated[str, Form()]
+
+STATUS_FILTERS = [*(s.value for s in CheckStatus), UNCHECKED]
 
 
 @dataclass(frozen=True)
@@ -71,14 +74,68 @@ def _render_form(
     )
 
 
+def _parse_query(params) -> ChannelQuery:
+    """Reads filters and order from the URL; values that make no sense are ignored."""
+    text = params.get("q", "").strip() or None
+    category = params.get("category", "")
+    language = params.get("language", "").strip().lower()
+    country = params.get("country", "").strip().upper()
+    status = params.get("status", "")
+    try:
+        sort = SortKey(params.get("sort", ""))
+    except ValueError:
+        sort = SortKey.TITLE
+    direction = params.get("dir")
+    return ChannelQuery(
+        text=text,
+        category_id=int(category) if category.isdigit() else None,
+        language=language if language_name(language) else None,
+        country=country if country_name(country) else None,
+        status=status if status in STATUS_FILTERS else None,
+        sort=sort,
+        descending=direction == "desc"
+        if direction in ("asc", "desc")
+        else DEFAULT_DESCENDING[sort],
+    )
+
+
+def _sort_links(request: Request, query: ChannelQuery) -> dict[str, str]:
+    """URL for each column header: the active column flips, others start at their default."""
+    links = {}
+    for key in SortKey:
+        descending = not query.descending if key == query.sort else DEFAULT_DESCENDING[key]
+        url = request.url.include_query_params(sort=key.value, dir="desc" if descending else "asc")
+        links[key.value] = str(url)
+    return links
+
+
 @router.get("/", response_class=HTMLResponse, name="channel_list")
 def channel_list(request: Request, session: SessionDep):
-    checks = latest_checks(session)
-    rows = []
-    for channel in channels.list_channels(session):
-        check = checks.get(channel.id)
-        rows.append(ChannelRow(channel, check, _screenshot_url(request, check)))
-    return templates.TemplateResponse(request, "channels/list.html", {"rows": rows})
+    query = _parse_query(request.query_params)
+    rows = [
+        ChannelRow(channel, check, _screenshot_url(request, check))
+        for channel, check in listing.search_channels(session, query)
+    ]
+    filtered = any((query.text, query.category_id, query.language, query.country, query.status))
+    return templates.TemplateResponse(
+        request,
+        "channels/list.html",
+        {
+            "rows": rows,
+            "query": query,
+            "filtered": filtered,
+            # Distinguishes "nothing matches" from "nothing at all".
+            "catalog_empty": not rows and not filtered,
+            "sort_links": _sort_links(request, query),
+            "categories": categories.list_categories(session),
+            "languages": sorted(
+                listing.used_languages(session), key=lambda code: language_name(code) or code
+            ),
+            "countries": sorted(
+                listing.used_countries(session), key=lambda code: country_name(code) or code
+            ),
+        },
+    )
 
 
 @router.get("/channels/new", response_class=HTMLResponse, name="channel_new")

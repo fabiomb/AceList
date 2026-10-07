@@ -92,7 +92,7 @@ def test_status_comes_from_the_latest_check(web, db):
 
     assert "No encontrado" in page
     assert 'title="engine said no"' in page
-    assert "Activo" not in page
+    assert "status-alive" not in page
     assert ">30<" not in page
 
 
