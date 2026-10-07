@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.config import DATA_DIR
 from app.db.models import Category, Channel
 from app.services.errors import DuplicateError, NotFoundError, ValidationError
+from app.services.iso import normalize_country, normalize_language
 
 _UPDATABLE = {"title", "content_id", "category_id", "language", "country"}
 
@@ -38,8 +39,8 @@ def create_channel(
         title=_clean_title(title),
         content_id=content_id,
         category_id=category_id,
-        language=language,
-        country=country,
+        language=normalize_language(language),
+        country=normalize_country(country),
     )
     session.add(channel)
     _commit_unique(session, content_id)
@@ -71,6 +72,10 @@ def update_channel(session: Session, channel_id: int, **changes) -> Channel:
         changes["title"] = _clean_title(changes["title"])
     if "category_id" in changes:
         _check_category(session, changes["category_id"])
+    if "language" in changes:
+        changes["language"] = normalize_language(changes["language"])
+    if "country" in changes:
+        changes["country"] = normalize_country(changes["country"])
     for field, value in changes.items():
         setattr(channel, field, value)
     _commit_unique(session, changes.get("content_id", channel.content_id))
