@@ -1,27 +1,10 @@
-import httpx
 import pytest
 
-from app.acestream.client import EngineClient
 from app.db.models import CheckStatus
-from app.main import app
 from app.services import categories, channels, checks
-from app.web.deps import get_engine_client
 
-ENGINE = "http://engine.test"
 HASH_A = "78266c15035d0ad8cbc58f821733931e1de434ab"
 HASH_B = "ecc85e5d2b6088d2d307fd0b5de4f09f089e762f"
-
-
-@pytest.fixture
-def engine(respx_mock):
-    """An engine that is down: saving still works and stores an `error` check."""
-
-    def _client():
-        with EngineClient(ENGINE, timeout=1) as client:
-            yield client
-
-    app.dependency_overrides[get_engine_client] = _client
-    return respx_mock.route(url__startswith=ENGINE).mock(side_effect=httpx.ConnectError("down"))
 
 
 def form(**fields):
@@ -51,7 +34,7 @@ def test_new_form_lists_categories_languages_and_countries(web, db):
     assert '<option value="AR">Argentina (AR)</option>' in page
 
 
-def test_adding_stores_the_channel_and_its_first_check(web, db, engine):
+def test_adding_stores_the_channel_and_its_first_check(web, db, engine_down):
     sports = categories.create_category(db, "Deportes")
 
     response = web.post(
@@ -66,16 +49,16 @@ def test_adding_stores_the_channel_and_its_first_check(web, db, engine):
     )
 
     assert response.status_code == 303
-    assert response.headers["location"] == "http://127.0.0.1/"
     [channel] = channels.list_channels(db)
+    assert response.headers["location"] == f"http://127.0.0.1/channels/{channel.id}"
     assert (channel.title, channel.content_id) == ("Canal Uno", HASH_A)
     assert (channel.category_id, channel.language, channel.country) == (sports.id, "es", "AR")
     [check] = checks.list_checks(db, channel.id)
     assert check.status == CheckStatus.ERROR
-    assert engine.called
+    assert engine_down.called
 
 
-def test_invalid_input_is_shown_again_with_errors_and_nothing_is_saved(web, db, engine):
+def test_invalid_input_is_shown_again_with_errors_and_nothing_is_saved(web, db, engine_down):
     response = web.post(
         "/channels/new", data=form(title="  ", link="not-a-hash", language="xx", country="UK")
     )
@@ -88,10 +71,10 @@ def test_invalid_input_is_shown_again_with_errors_and_nothing_is_saved(web, db, 
     assert "País desconocido" in page
     assert 'value="not-a-hash"' in page
     assert channels.list_channels(db) == []
-    assert not engine.called
+    assert not engine_down.called
 
 
-def test_duplicate_names_the_existing_channel_without_calling_the_engine(web, db, engine):
+def test_duplicate_names_the_existing_channel_without_calling_the_engine(web, db, engine_down):
     channels.create_channel(db, title="El original", content_id=HASH_A)
 
     response = web.post("/channels/new", data=form(link=f"acestream://{HASH_A}"))
@@ -99,10 +82,10 @@ def test_duplicate_names_the_existing_channel_without_calling_the_engine(web, db
     assert response.status_code == 422
     assert "Este Content ID ya está registrado como «El original»." in response.text
     assert len(channels.list_channels(db)) == 1
-    assert not engine.called
+    assert not engine_down.called
 
 
-def test_unknown_category_is_rejected(web, db, engine):
+def test_unknown_category_is_rejected(web, db, engine_down):
     response = web.post("/channels/new", data=form(category_id="999"))
 
     assert response.status_code == 422
@@ -110,7 +93,7 @@ def test_unknown_category_is_rejected(web, db, engine):
     assert channels.list_channels(db) == []
 
 
-def test_new_category_is_created_or_reused_by_name(web, db, engine):
+def test_new_category_is_created_or_reused_by_name(web, db, engine_down):
     web.post("/channels/new", data=form(new_category="Cine"))
     web.post("/channels/new", data=form(title="Dos", link=HASH_B, new_category=" cine "))
 
@@ -119,7 +102,7 @@ def test_new_category_is_created_or_reused_by_name(web, db, engine):
     assert {c.category_id for c in channels.list_channels(db)} == {cine.id}
 
 
-def test_form_values_are_escaped(web, db, engine):
+def test_form_values_are_escaped(web, db, engine_down):
     response = web.post("/channels/new", data=form(title='"><script>x()</script>', link="bad"))
 
     assert "<script>x()</script>" not in response.text
@@ -145,7 +128,7 @@ def test_edit_form_is_prefilled(web, db):
     assert '<option value="AR" selected>' in page
 
 
-def test_editing_other_fields_does_not_verify_again(web, db, engine):
+def test_editing_other_fields_does_not_verify_again(web, db, engine_down):
     channel = channels.create_channel(db, title="Uno", content_id=HASH_A)
 
     response = web.post(
@@ -159,10 +142,10 @@ def test_editing_other_fields_does_not_verify_again(web, db, engine):
     edited = channels.get_channel(db, channel.id)
     assert (edited.title, edited.language) == ("Uno renombrado", "en")
     assert checks.list_checks(db, channel.id) == []
-    assert not engine.called
+    assert not engine_down.called
 
 
-def test_changing_the_hash_verifies_again(web, db, engine):
+def test_changing_the_hash_verifies_again(web, db, engine_down):
     channel = channels.create_channel(db, title="Uno", content_id=HASH_A)
 
     web.post(f"/channels/{channel.id}/edit", data=form(title="Uno", link=HASH_B))
@@ -170,10 +153,10 @@ def test_changing_the_hash_verifies_again(web, db, engine):
     db.expire_all()
     assert channels.get_channel(db, channel.id).content_id == HASH_B
     assert len(checks.list_checks(db, channel.id)) == 1
-    assert engine.called
+    assert engine_down.called
 
 
-def test_editing_keeps_its_own_hash_but_rejects_another_channels(web, db, engine):
+def test_editing_keeps_its_own_hash_but_rejects_another_channels(web, db, engine_down):
     channels.create_channel(db, title="Otro", content_id=HASH_B)
     channel = channels.create_channel(db, title="Uno", content_id=HASH_A)
 
