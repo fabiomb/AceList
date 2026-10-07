@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Ajustes · AceList{% endblock %}
+
+{% macro field_error(name) %}
+  {% if form.errors[name] %}<p class="field-error" id="{{ name }}-error">{{ form.errors[name] }}</p>{% endif %}
+{% endmacro %}
+
+{% macro invalid(name) %}{% if form.errors[name] %} aria-invalid="true" aria-describedby="{{ name }}-error"{% endif %}{% endmacro %}
+
+{% macro number(name, label, hint) %}
+  <div class="field">
+    <label for="{{ name }}">{{ label }}</label>
+    <input id="{{ name }}" name="{{ name }}" type="text" inputmode="decimal" required value="{{ form[name] }}"{{ invalid(name) }}>
+    {{ field_error(name) }}
+    <p class="hint">{{ hint }}</p>
+  </div>
+{% endmacro %}
+
+{% macro path(name, label, hint) %}
+  <div class="field">
+    <label for="{{ name }}">{{ label }}</label>
+    <input id="{{ name }}" name="{{ name }}" type="text" spellcheck="false" value="{{ form[name] }}"
+           placeholder="{{ detected[name] or 'Sin detectar' }}"{{ invalid(name) }}>
+    {{ field_error(name) }}
+    <p class="hint">
+      {{ hint }}
+      {% if detected[name] %}Detectado: <code class="wrap">{{ detected[name] }}</code>{% else %}No se detectó en las rutas habituales.{% endif %}
+    </p>
+  </div>
+{% endmacro %}
+
+{% block content %}
+<h1>Ajustes</h1>
+
+{% if notice %}<p class="notice notice-ok" role="status">{{ notice }}</p>{% endif %}
+{% if form.errors %}<p class="form-error" role="alert">Revisa los campos marcados.</p>{% endif %}
+
+<form class="card form settings" method="post" action="{{ url_for('settings_save') }}"
+      hx-disabled-elt="find button">
+  <fieldset>
+    <legend>Engine de Ace Stream</legend>
+    <div class="field">
+      <label for="engine_url">URL del engine</label>
+      <input id="engine_url" name="engine_url" type="url" required spellcheck="false" value="{{ form.engine_url }}"{{ invalid("engine_url") }}>
+      {{ field_error("engine_url") }}
+      <p class="hint">Normalmente <code>http://127.0.0.1:6878</code>.</p>
+    </div>
+    <div class="field-row">
+      {{ number("engine_timeout", "Timeout de cada petición (s)", "Cuánto esperar una respuesta del engine.") }}
+    </div>
+    <div class="actions">
+      <button type="submit" class="button" formnovalidate
+              hx-post="{{ url_for('settings_test_engine') }}" hx-target="#notices" hx-swap="innerHTML">Probar conexión</button>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Verificación</legend>
+    <div class="field-row">
+      {{ number("min_peers", "Peers mínimos", "Un canal está activo con al menos estos peers.") }}
+      {{ number("check_timeout", "Timeout de verificación (s)", "Tiempo máximo para que un canal empiece a recibir datos.") }}
+      {{ number("screenshot_timeout", "Timeout de captura (s)", "Tiempo máximo de ffmpeg para sacar un fotograma.") }}
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Programas</legend>
+    <p class="hint">Deja una ruta vacía para detectarla automáticamente.</p>
+    {{ path("vlc_path", "VLC", "Se usa para reproducir los canales.") }}
+    {{ path("ffmpeg_path", "ffmpeg", "Se usa para las capturas.") }}
+    {{ path("acestream_path", "Engine de Ace Stream", "Solo informativo por ahora.") }}
+    <div class="actions">
+      <button type="submit" class="button" formnovalidate formaction="{{ url_for('settings_detect') }}">Autodetectar rutas</button>
+    </div>
+  </fieldset>
+
+  <div class="actions">
+    <button type="submit" class="button primary">Guardar</button>
+    <span class="busy" aria-live="polite">Procesando…</span>
+  </div>
+</form>
+{% endblock %}

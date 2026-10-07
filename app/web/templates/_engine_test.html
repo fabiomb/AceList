@@ -1,0 +1,5 @@
+{% if problem %}
+<p class="notice notice-error" role="alert">{{ problem }}</p>
+{% else %}
+<p class="notice notice-ok" role="status">Conectado con el engine {{ version.version }} ({{ version.platform }}).</p>
+{% endif %}

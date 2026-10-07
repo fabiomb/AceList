@@ -3,6 +3,7 @@ import shutil
 import subprocess
 import uuid
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -11,6 +12,12 @@ from app.acestream.content_id import parse_content_id
 from app.config import DATA_DIR, FFMPEG_PATH, SCREENSHOT_TIMEOUT
 
 SCREENSHOTS_SUBDIR = "screenshots"
+
+
+@dataclass(frozen=True)
+class CaptureSettings:
+    ffmpeg_path: str | None = None  # None: the ACELIST_FFMPEG_PATH setting, then PATH
+    timeout: float = SCREENSHOT_TIMEOUT
 
 
 class ScreenshotError(Exception):
