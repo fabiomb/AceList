@@ -15,6 +15,7 @@ dependencies = [
     "alembic>=1.13",
     "httpx>=0.27",
     "jinja2>=3.1",
+    "pycountry>=24.6",
 ]
 
 [project.optional-dependencies]
