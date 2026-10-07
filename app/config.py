@@ -10,3 +10,6 @@ DATABASE_URL = f"sqlite:///{DB_PATH.as_posix()}"
 ENGINE_URL = os.environ.get("ACELIST_ENGINE_URL", "http://127.0.0.1:6878")
 # An unknown hash takes ~4 s to fail on the engine, so the default leaves headroom.
 ENGINE_TIMEOUT = float(os.environ.get("ACELIST_ENGINE_TIMEOUT", "15"))
+
+FFMPEG_PATH = os.environ.get("ACELIST_FFMPEG_PATH")  # None: look it up on PATH
+SCREENSHOT_TIMEOUT = float(os.environ.get("ACELIST_SCREENSHOT_TIMEOUT", "30"))
