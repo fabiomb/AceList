@@ -291,3 +291,45 @@ def test_verify_async_does_not_block_the_event_loop(client, engine):
 
     assert result.status is CheckStatus.ALIVE
     assert ticks >= 5
+
+
+# on_alive hook
+
+
+def test_on_alive_runs_while_the_session_is_still_open(client, clock, engine):
+    engine.stats(stat("dl", peers=2, speed=10, downloaded=100))
+    seen = []
+
+    result = verify(
+        client,
+        HASH,
+        sleep=clock.sleep,
+        clock=clock,
+        on_alive=lambda s: seen.append((s.infohash, engine.stop.call_count)),
+    )
+
+    assert result.status is CheckStatus.ALIVE
+    assert seen == [(INFOHASH, 0)]
+    assert engine.stop.call_count == 1
+
+
+def test_on_alive_is_skipped_when_the_channel_is_not_alive(client, clock, engine):
+    engine.stats(stat("prebuf", peers=2))
+    seen = []
+
+    result = verify(client, HASH, sleep=clock.sleep, clock=clock, on_alive=seen.append)
+
+    assert result.status is CheckStatus.NO_PEERS
+    assert seen == []
+
+
+def test_a_failing_on_alive_still_stops_the_session(client, clock, engine):
+    engine.stats(stat("dl", peers=2, speed=10, downloaded=100))
+
+    def boom(_session):
+        raise RuntimeError("boom")
+
+    with pytest.raises(RuntimeError, match="boom"):
+        verify(client, HASH, sleep=clock.sleep, clock=clock, on_alive=boom)
+
+    assert engine.stop.call_count == 1

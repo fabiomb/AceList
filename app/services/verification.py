@@ -74,6 +74,7 @@ def verify(
     content_id: str,
     settings: VerificationSettings | None = None,
     *,
+    on_alive: Callable[[StreamSession], None] | None = None,
     sleep: Callable[[float], None] = time.sleep,
     clock: Callable[[], float] = time.monotonic,
 ) -> VerificationResult:
@@ -81,12 +82,17 @@ def verify(
 
     A malformed Content ID raises `InvalidContentIdError`. Engine failures are
     returned as `ERROR` so a caller can store them; the session is stopped either way.
+    `on_alive` runs while the session is still playing, which is the only moment a
+    screenshot can be taken; exceptions it raises propagate.
     """
     settings = settings or VerificationSettings()
     content_id = parse_content_id(content_id)
     try:
         with client.stream(content_id) as session:
-            return probe(client, session, settings, sleep=sleep, clock=clock)
+            result = probe(client, session, settings, sleep=sleep, clock=clock)
+            if on_alive is not None and result.status is CheckStatus.ALIVE:
+                on_alive(session)
+            return result
     except ContentNotFoundError:
         return VerificationResult(CheckStatus.NOT_FOUND)
     except EngineError as exc:
