@@ -21,6 +21,11 @@
       <button type="submit" class="button primary">Verificar de nuevo</button>
       <span class="busy" aria-live="polite">Verificando…</span>
     </form>
+    <form class="inline" method="post" action="{{ url_for('channel_play', channel_id=channel.id) }}"
+          hx-post="{{ url_for('channel_play', channel_id=channel.id) }}" hx-target="#notices" hx-swap="innerHTML"
+          hx-disabled-elt="find button">
+      <button type="submit" class="button">Abrir en reproductor</button>
+    </form>
     <a class="button" href="{{ url_for('channel_edit', channel_id=channel.id) }}">Editar</a>
     <a class="button danger-outline" href="{{ url_for('channel_delete', channel_id=channel.id) }}">Borrar</a>
   </div>

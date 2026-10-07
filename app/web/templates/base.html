@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  {# 422 is a rejected form: htmx must show it instead of discarding it as an error. #}
-  <meta name="htmx-config" content='{"responseHandling": [{"code": "204", "swap": false}, {"code": "[23]..", "swap": true}, {"code": "422", "swap": true}, {"code": "[45]..", "swap": false, "error": true}]}'>
+  {# 422 is a rejected form and 503 a missing player or engine: htmx must show them. #}
+  <meta name="htmx-config" content='{"responseHandling": [{"code": "204", "swap": false}, {"code": "[23]..", "swap": true}, {"code": "422", "swap": true}, {"code": "503", "swap": true}, {"code": "[45]..", "swap": false, "error": true}]}'>
   <title>{% block title %}AceList{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}">
   <script src="{{ url_for('static', path='htmx.min.js') }}" defer></script>
@@ -17,6 +17,8 @@
     </nav>
   </header>
   <main class="content">
+    {# Results of in-page actions, such as opening a channel in VLC. #}
+    <div id="notices" aria-live="polite"></div>
     {% block content %}{% endblock %}
   </main>
 </body>

@@ -126,6 +126,11 @@
         </td>
         <td><time datetime="{{ channel.created_at.isoformat() }}">{{ channel.created_at | localtime }}</time></td>
         <td class="row-actions">
+          <form class="inline" method="post" action="{{ url_for('channel_play', channel_id=channel.id) }}"
+                hx-post="{{ url_for('channel_play', channel_id=channel.id) }}" hx-target="#notices" hx-swap="innerHTML"
+                hx-disabled-elt="find button">
+            <button type="submit" class="link-button">Reproducir</button>
+          </form>
           <a href="{{ url_for('channel_edit', channel_id=channel.id) }}">Editar</a>
           <a class="danger-link" href="{{ url_for('channel_delete', channel_id=channel.id) }}">Borrar</a>
         </td>
