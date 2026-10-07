@@ -104,7 +104,7 @@
           <span class="no-thumb" aria-label="Sin captura"></span>
           {% endif %}
         </td>
-        <td class="title">{{ channel.title }}</td>
+        <td class="title"><a href="{{ url_for('channel_detail', channel_id=channel.id) }}">{{ channel.title }}</a></td>
         <td><code title="{{ channel.content_id }}">{{ channel.content_id | short_hash }}</code></td>
         <td>{{ channel.category.name if channel.category else "—" }}</td>
         <td>

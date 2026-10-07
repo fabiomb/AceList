@@ -1,10 +1,12 @@
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
+from app.acestream.client import EngineClient
 from app.db.base import Base
 from app.db.session import make_engine, make_session_factory
 from app.main import app
-from app.web.deps import get_session
+from app.web.deps import get_engine_client, get_session
 
 
 @pytest.fixture
@@ -33,3 +35,16 @@ def web(db_factory):
     app.dependency_overrides[get_session] = _session
     yield TestClient(app, base_url="http://127.0.0.1")
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def engine_down(web, respx_mock):
+    """The web app's engine, unreachable: saving still works and stores an `error` check."""
+    base = "http://engine.test"
+
+    def _client():
+        with EngineClient(base, timeout=1) as client:
+            yield client
+
+    app.dependency_overrides[get_engine_client] = _client
+    return respx_mock.route(url__startswith=base).mock(side_effect=httpx.ConnectError("down"))

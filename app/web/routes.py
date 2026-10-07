@@ -6,7 +6,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.db.models import Channel, Check, CheckStatus
-from app.services import catalog, categories, channels, listing
+from app.services import catalog, categories, channels, checks, listing
 from app.services.errors import NotFoundError, ServiceError
 from app.services.iso import country_name, language_name
 from app.services.listing import DEFAULT_DESCENDING, UNCHECKED, ChannelQuery, SortKey
@@ -29,6 +29,12 @@ class ChannelRow:
     screenshot_url: str | None
 
 
+@dataclass(frozen=True)
+class CheckRow:
+    check: Check
+    screenshot_url: str | None
+
+
 def _screenshot_url(request: Request, check: Check | None) -> str | None:
     if check is None or not check.screenshot_path:
         return None
@@ -46,9 +52,9 @@ def _get_channel_or_404(session: Session, channel_id: int) -> Channel:
         raise HTTPException(status_code=404, detail="Canal no encontrado") from exc
 
 
-def _redirect_to_list(request: Request) -> RedirectResponse:
-    # 303 turns the POST into a GET, so reloading the list never resubmits the form.
-    return RedirectResponse(request.url_for("channel_list"), status_code=303)
+def _redirect(request: Request, name: str, **path_params) -> RedirectResponse:
+    # 303 turns the POST into a GET, so reloading the page never resubmits the form.
+    return RedirectResponse(request.url_for(name, **path_params), status_code=303)
 
 
 def _render_form(
@@ -161,7 +167,7 @@ def channel_create(
         return _render_form(request, session, form)
     try:
         # Blocks while the engine verifies the new channel; FastAPI runs it in a worker.
-        catalog.add_channel(
+        channel = catalog.add_channel(
             session,
             client,
             title=data.title,
@@ -172,7 +178,35 @@ def channel_create(
         )
     except ServiceError as exc:
         return _render_form(request, session, form, error=f"No se pudo guardar: {exc}")
-    return _redirect_to_list(request)
+    return _redirect(request, "channel_detail", channel_id=channel.id)
+
+
+@router.get("/channels/{channel_id}", response_class=HTMLResponse, name="channel_detail")
+def channel_detail(request: Request, session: SessionDep, channel_id: int):
+    channel = _get_channel_or_404(session, channel_id)
+    history = [
+        CheckRow(check, _screenshot_url(request, check))
+        for check in checks.list_checks(session, channel_id)
+    ]
+    return templates.TemplateResponse(
+        request,
+        "channels/detail.html",
+        {
+            "channel": channel,
+            "history": history,
+            "latest": history[0].check if history else None,
+            # The newest screenshot, even if later checks found the channel dead.
+            "last_capture": next((row for row in history if row.screenshot_url), None),
+        },
+    )
+
+
+@router.post("/channels/{channel_id}/check", name="channel_check")
+def channel_check(request: Request, session: SessionDep, client: EngineDep, channel_id: int):
+    _get_channel_or_404(session, channel_id)
+    # Blocks while the engine is polled; never raises for engine problems, they are stored.
+    catalog.check_channel(session, client, channel_id)
+    return _redirect(request, "channel_detail", channel_id=channel_id)
 
 
 @router.get("/channels/{channel_id}/edit", response_class=HTMLResponse, name="channel_edit")
@@ -215,7 +249,7 @@ def channel_update(
         return _render_form(
             request, session, form, channel=channel, error=f"No se pudo guardar: {exc}"
         )
-    return _redirect_to_list(request)
+    return _redirect(request, "channel_detail", channel_id=channel_id)
 
 
 @router.get("/channels/{channel_id}/delete", response_class=HTMLResponse, name="channel_delete")
@@ -232,4 +266,4 @@ def channel_delete_confirm(request: Request, session: SessionDep, channel_id: in
 def channel_destroy(request: Request, session: SessionDep, channel_id: int):
     _get_channel_or_404(session, channel_id)
     channels.delete_channel(session, channel_id)
-    return _redirect_to_list(request)
+    return _redirect(request, "channel_list")
