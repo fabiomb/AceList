@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from app.config import DATA_DIR
 from app.db.session import make_engine, make_session_factory
 from app.services.screenshots import SCREENSHOTS_SUBDIR
+from app.web import settings_routes
 from app.web.routes import router
 from app.web.templating import STATIC_DIR
 
@@ -56,6 +57,7 @@ app.mount(
     name="screenshots",
 )
 app.include_router(router)
+app.include_router(settings_routes.router)
 
 
 @app.get("/health")

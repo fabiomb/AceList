@@ -64,6 +64,7 @@ a { color: var(--accent); }
   text-decoration: none;
 }
 
+.topbar nav { display: flex; gap: 16px; }
 .topbar nav a { text-decoration: none; }
 
 .content {
@@ -314,3 +315,14 @@ form.inline { display: inline; }
 
 .notice-ok { background: var(--alive-bg); color: var(--alive-fg); }
 .notice-error { background: var(--bad-bg); color: var(--bad-fg); }
+
+.settings fieldset {
+  margin: 0 0 20px;
+  padding: 0 0 4px;
+  border: none;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings fieldset:last-of-type { border-bottom: none; }
+.settings legend { padding: 0; margin-bottom: 12px; font-weight: 700; font-size: 16px; }
+.settings fieldset .actions { margin: 0 0 16px; }

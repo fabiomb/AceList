@@ -15,8 +15,9 @@ def opened(monkeypatch):
         calls = []
         error = None
 
-        def __call__(self, client, content_id, *, title=None):
+        def __call__(self, client, content_id, *, title=None, vlc_path=None):
             self.calls.append((content_id, title))
+            self.vlc_path = vlc_path
             if self.error:
                 raise self.error
 

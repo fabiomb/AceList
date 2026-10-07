@@ -6,14 +6,13 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.acestream.errors import ContentNotFoundError, EngineError
-from app.config import ENGINE_URL
 from app.db.models import Channel, Check, CheckStatus
 from app.services import catalog, categories, channels, checks, listing, player
 from app.services.errors import NotFoundError, ServiceError
 from app.services.iso import country_name, language_name
 from app.services.listing import DEFAULT_DESCENDING, UNCHECKED, ChannelQuery, SortKey
 from app.services.screenshots import SCREENSHOTS_SUBDIR
-from app.web.deps import EngineDep, SessionDep
+from app.web.deps import EngineDep, SessionDep, SettingsDep
 from app.web.forms import ChannelForm, resolve_category
 from app.web.templating import templates
 
@@ -156,6 +155,7 @@ def channel_create(
     request: Request,
     session: SessionDep,
     client: EngineDep,
+    settings: SettingsDep,
     title: FormField = "",
     link: FormField = "",
     category_id: FormField = "",
@@ -177,6 +177,8 @@ def channel_create(
             category_id=resolve_category(session, data),
             language=data.language,
             country=data.country,
+            settings=settings.verification(),
+            capture=settings.capture(),
         )
     except ServiceError as exc:
         return _render_form(request, session, form, error=f"No se pudo guardar: {exc}")
@@ -204,24 +206,39 @@ def channel_detail(request: Request, session: SessionDep, channel_id: int):
 
 
 @router.post("/channels/{channel_id}/check", name="channel_check")
-def channel_check(request: Request, session: SessionDep, client: EngineDep, channel_id: int):
+def channel_check(
+    request: Request, session: SessionDep, client: EngineDep, settings: SettingsDep, channel_id: int
+):
     _get_channel_or_404(session, channel_id)
     # Blocks while the engine is polled; never raises for engine problems, they are stored.
-    catalog.check_channel(session, client, channel_id)
+    catalog.check_channel(
+        session,
+        client,
+        channel_id,
+        settings=settings.verification(),
+        capture=settings.capture(),
+    )
     return _redirect(request, "channel_detail", channel_id=channel_id)
 
 
 @router.post("/channels/{channel_id}/play", response_class=HTMLResponse, name="channel_play")
-def channel_play(request: Request, session: SessionDep, client: EngineDep, channel_id: int):
+def channel_play(
+    request: Request, session: SessionDep, client: EngineDep, settings: SettingsDep, channel_id: int
+):
     channel = _get_channel_or_404(session, channel_id)
     try:
-        player.open_in_player(client, channel.content_id, title=channel.title)
+        player.open_in_player(
+            client, channel.content_id, title=channel.title, vlc_path=settings.vlc_path
+        )
     except player.VlcNotFoundError:
-        error = "No se encontró VLC. Instálalo o indica la ruta de vlc.exe en ACELIST_VLC_PATH."
+        error = "No se encontró VLC. Instálalo o indica la ruta de vlc.exe en Ajustes."
     except ContentNotFoundError:
         error = "El engine no pudo cargar este Content ID: puede que el enlace haya muerto."
     except EngineError:
-        error = f"El engine de Ace Stream no responde en {ENGINE_URL}. ¿Está abierto Ace Stream?"
+        error = (
+            f"El engine de Ace Stream no responde en {settings.engine_url}. "
+            "¿Está abierto Ace Stream?"
+        )
     except player.PlayerError as exc:
         error = f"No se pudo abrir VLC: {exc}"
     else:
@@ -246,6 +263,7 @@ def channel_update(
     request: Request,
     session: SessionDep,
     client: EngineDep,
+    settings: SettingsDep,
     channel_id: int,
     title: FormField = "",
     link: FormField = "",
@@ -270,6 +288,8 @@ def channel_update(
             category_id=resolve_category(session, data),
             language=data.language,
             country=data.country,
+            settings=settings.verification(),
+            capture=settings.capture(),
         )
     except ServiceError as exc:
         return _render_form(

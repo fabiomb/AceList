@@ -9,7 +9,7 @@ from app.db.models import CheckStatus
 from app.db.session import make_engine, make_session_factory
 from app.services import catalog, categories, channels, checks
 from app.services.errors import DuplicateError, NotFoundError, ValidationError
-from app.services.screenshots import ScreenshotError
+from app.services.screenshots import CaptureSettings, ScreenshotError
 from app.services.verification import VerificationSettings
 
 BASE = "http://127.0.0.1:6878"
@@ -74,8 +74,9 @@ def shots(monkeypatch, tmp_path):
         calls = []
         fail = False
 
-        def __call__(self, playback_url, content_id, *, data_dir):
+        def __call__(self, playback_url, content_id, *, data_dir, **options):
             self.calls.append((playback_url, content_id, data_dir))
+            self.options = options
             if self.fail:
                 raise ScreenshotError("ffmpeg produced no frame")
             relative = f"screenshots/{content_id}_{len(self.calls)}.jpg"
@@ -169,6 +170,14 @@ def test_screenshot_failure_does_not_spoil_an_alive_check(session, client, engin
     assert check.status is CheckStatus.ALIVE
     assert check.screenshot_path is None
     assert engine.stop.call_count == 1
+
+
+def test_capture_settings_reach_ffmpeg(session, client, engine, shots, tmp_path):
+    capture = CaptureSettings(ffmpeg_path="C:/tools/ffmpeg.exe", timeout=7)
+
+    add(session, client, tmp_path, capture=capture)
+
+    assert shots.options == {"ffmpeg_path": "C:/tools/ffmpeg.exe", "timeout": 7}
 
 
 def test_duplicate_is_rejected_naming_the_existing_channel_without_touching_the_engine(

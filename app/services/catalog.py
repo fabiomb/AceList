@@ -10,7 +10,7 @@ from app.db.models import Channel, Check
 from app.services import channels
 from app.services.checks import record_verification
 from app.services.errors import DuplicateError, ValidationError
-from app.services.screenshots import ScreenshotError, capture_screenshot
+from app.services.screenshots import CaptureSettings, ScreenshotError, capture_screenshot
 from app.services.verification import VerificationSettings, verify
 
 log = logging.getLogger(__name__)
@@ -30,6 +30,7 @@ def check_channel(
     channel_id: int,
     *,
     settings: VerificationSettings | None = None,
+    capture: CaptureSettings | None = None,
     data_dir: Path = DATA_DIR,
 ) -> Check:
     """Verifies a channel, takes a screenshot if it is alive, and stores the result.
@@ -39,17 +40,24 @@ def check_channel(
     """
     channel = channels.get_channel(session, channel_id)
     content_id = channel.content_id
+    capture = capture or CaptureSettings()
     screenshot: str | None = None
 
-    def capture(stream: StreamSession) -> None:
+    def take_screenshot(stream: StreamSession) -> None:
         nonlocal screenshot
         try:
-            screenshot = capture_screenshot(stream.playback_url, content_id, data_dir=data_dir)
+            screenshot = capture_screenshot(
+                stream.playback_url,
+                content_id,
+                data_dir=data_dir,
+                ffmpeg_path=capture.ffmpeg_path,
+                timeout=capture.timeout,
+            )
         except ScreenshotError as exc:
             # A missing screenshot must not turn a live channel into a failed check.
             log.warning("no screenshot for %s: %s", content_id, exc)
 
-    result = verify(client, content_id, settings, on_alive=capture)
+    result = verify(client, content_id, settings, on_alive=take_screenshot)
     return record_verification(session, channel_id, result, screenshot_path=screenshot)
 
 
@@ -63,6 +71,7 @@ def add_channel(
     language: str | None = None,
     country: str | None = None,
     settings: VerificationSettings | None = None,
+    capture: CaptureSettings | None = None,
     data_dir: Path = DATA_DIR,
 ) -> Channel:
     """Registers a channel from a Content ID or `acestream://` link and verifies it.
@@ -80,7 +89,9 @@ def add_channel(
         language=language,
         country=country,
     )
-    check_channel(session, client, channel.id, settings=settings, data_dir=data_dir)
+    check_channel(
+        session, client, channel.id, settings=settings, capture=capture, data_dir=data_dir
+    )
     return channel
 
 
@@ -91,6 +102,7 @@ def edit_channel(
     *,
     link: str | None = None,
     settings: VerificationSettings | None = None,
+    capture: CaptureSettings | None = None,
     data_dir: Path = DATA_DIR,
     **changes,
 ) -> Channel:
@@ -110,7 +122,9 @@ def edit_channel(
     channels.update_channel(session, channel_id, **changes)
     if hash_changed:
         # History is kept: it is how the user sees that the old link died.
-        check_channel(session, client, channel_id, settings=settings, data_dir=data_dir)
+        check_channel(
+            session, client, channel_id, settings=settings, capture=capture, data_dir=data_dir
+        )
     return channel
 
 

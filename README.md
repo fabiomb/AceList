@@ -2,7 +2,7 @@
 
 Catálogo local de enlaces Acestream. Valida el Content ID, comprueba si hay peers, intenta capturar una imagen del stream y permite abrir el canal en un reproductor como VLC. Guarda la fecha de cada verificación porque los enlaces mueren y se reemplazan.
 
-> Estado: **fase 4 completa**. La interfaz web permite listar (con orden y filtros), agregar, editar, borrar y volver a verificar canales, y ver su historial con capturas. Siguiente: fase 5 (abrir en VLC y ajustes). Ver [plan.md](plan.md) y [CHANGELOG.md](CHANGELOG.md).
+> Estado: **fase 5 completa**. La interfaz web permite listar (con orden y filtros), agregar, editar, borrar y volver a verificar canales, ver su historial con capturas, abrirlos en VLC y configurar rutas y tiempos en Ajustes. Siguiente: fase 6 (re-verificación en segundo plano, importación masiva, cierre). Ver [plan.md](plan.md) y [CHANGELOG.md](CHANGELOG.md).
 
 ## Funcionalidades previstas
 
