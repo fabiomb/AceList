@@ -9,3 +9,4 @@ Todos los cambios relevantes del proyecto se registran aquí. Formato basado en 
 - 22 issues de GitHub (#1 a #22) organizados en 7 fases con etiquetas `phase:0` a `phase:6`.
 - `README.md` con funcionalidades previstas, requisitos y hoja de ruta.
 - `CHANGELOG.md`.
+- Project skeleton (#1): `pyproject.toml`, package `app/` with a `/health` endpoint bound to `127.0.0.1`, `.gitignore`, ruff and pytest configuration, and a first test suite.

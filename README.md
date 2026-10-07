@@ -2,7 +2,7 @@
 
 Catálogo local de enlaces Acestream. Valida el Content ID, comprueba si hay peers, intenta capturar una imagen del stream y permite abrir el canal en un reproductor como VLC. Guarda la fecha de cada verificación porque los enlaces mueren y se reemplazan.
 
-> Estado: **planificación**. Todavía no hay código; ver [plan.md](plan.md) y [CHANGELOG.md](CHANGELOG.md).
+> Estado: **fase 0 en curso**. Existe el esqueleto del proyecto, aún sin funcionalidades; ver [plan.md](plan.md) y [CHANGELOG.md](CHANGELOG.md).
 
 ## Funcionalidades previstas
 
@@ -24,6 +24,16 @@ Catálogo local de enlaces Acestream. Valida el Content ID, comprueba si hay pee
 ## Stack
 
 Python, FastAPI, SQLite + SQLAlchemy, Jinja2 + HTMX, httpx, ffmpeg. Detalle y justificación en [plan.md](plan.md).
+
+## Desarrollo
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python -m pip install -e ".[dev]"
+.\.venv\Scripts\ruff check .
+.\.venv\Scripts\pytest
+.\.venv\Scripts\python -m app.main   # http://127.0.0.1:8000/health
+```
 
 ## Uso
 
