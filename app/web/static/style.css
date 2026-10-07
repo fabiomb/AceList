@@ -6,6 +6,7 @@
   --muted: #5f6b7a;
   --border: #dde1e7;
   --accent: #2f6fdb;
+  --on-accent: #ffffff;
   --alive-bg: #e3f5e9;
   --alive-fg: #1d6b3a;
   --warn-bg: #fdf1dc;
@@ -24,6 +25,7 @@
     --muted: #9aa5b4;
     --border: #2e343e;
     --accent: #7aa7f5;
+    --on-accent: #10141a;
     --alive-bg: #173a25;
     --alive-fg: #8fdcaa;
     --warn-bg: #3d2f12;
@@ -139,3 +141,82 @@ abbr { text-decoration: none; cursor: help; }
 }
 
 .empty-state .empty-title { font-size: 17px; color: var(--text); margin-top: 0; }
+
+.page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.page-head h1 { margin: 0; }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.button {
+  display: inline-block;
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.button.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.button.danger { background: var(--bad-fg); border-color: var(--bad-fg); color: var(--on-accent); }
+.button:disabled { opacity: 0.6; cursor: progress; }
+
+.row-actions { text-align: right; }
+.row-actions a { margin-left: 12px; text-decoration: none; }
+.danger-link { color: var(--bad-fg); }
+
+.card {
+  max-width: 720px;
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 16px; flex: 1; }
+.field-row { display: flex; gap: 16px; flex-wrap: wrap; }
+.field-row .field { min-width: 220px; }
+.field label { font-weight: 600; font-size: 14px; }
+
+.field input,
+.field select {
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
+.field [aria-invalid="true"] { border-color: var(--bad-fg); }
+.field-error { margin: 0; color: var(--bad-fg); font-size: 13px; }
+.hint { margin: 0; color: var(--muted); font-size: 13px; }
+
+.form-error {
+  max-width: 720px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  background: var(--bad-bg);
+  color: var(--bad-fg);
+}
+
+.actions { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+.busy { display: none; color: var(--muted); }
+form.htmx-request .busy { display: inline; }

@@ -3,7 +3,10 @@
 {% block title %}Canales · AceList{% endblock %}
 
 {% block content %}
-<h1>Canales</h1>
+<div class="page-head">
+  <h1>Canales</h1>
+  <a class="button primary" href="{{ url_for('channel_new') }}">Agregar canal</a>
+</div>
 
 {% if rows %}
 <div class="table-wrap">
@@ -19,6 +22,7 @@
         <th scope="col">Estado</th>
         <th scope="col" class="num">Peers</th>
         <th scope="col">Última verificación</th>
+        <th scope="col"><span class="visually-hidden">Acciones</span></th>
       </tr>
     </thead>
     <tbody>
@@ -53,6 +57,10 @@
         <td>
           {% if check %}<time datetime="{{ check.checked_at.isoformat() }}">{{ check.checked_at | localtime }}</time>{% else %}Nunca{% endif %}
         </td>
+        <td class="row-actions">
+          <a href="{{ url_for('channel_edit', channel_id=channel.id) }}">Editar</a>
+          <a class="danger-link" href="{{ url_for('channel_delete', channel_id=channel.id) }}">Borrar</a>
+        </td>
       </tr>
       {% endfor %}
     </tbody>
@@ -62,6 +70,7 @@
 <section class="empty-state">
   <p class="empty-title">Todavía no hay canales en el catálogo.</p>
   <p>Cuando agregues un Content ID o un enlace <code>acestream://</code>, aparecerá aquí con su estado y su última verificación.</p>
+  <p><a class="button primary" href="{{ url_for('channel_new') }}">Agregar el primer canal</a></p>
 </section>
 {% endif %}
 {% endblock %}
