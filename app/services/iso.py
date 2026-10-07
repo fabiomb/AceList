@@ -27,6 +27,14 @@ def country_choices() -> list[tuple[str, str]]:
     return list(_countries().items())
 
 
+def language_name(code: str | None) -> str | None:
+    return _languages().get(code) if code else None
+
+
+def country_name(code: str | None) -> str | None:
+    return _countries().get(code) if code else None
+
+
 def normalize_language(value: str | None) -> str | None:
     """ISO 639-1 code in lowercase; blank means no language."""
     code = (value or "").strip().lower()

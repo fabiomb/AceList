@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Canales · AceList{% endblock %}
+
+{% block content %}
+<h1>Canales</h1>
+
+{% if rows %}
+<div class="table-wrap">
+  <table class="channels">
+    <thead>
+      <tr>
+        <th scope="col">Captura</th>
+        <th scope="col">Título</th>
+        <th scope="col">Hash</th>
+        <th scope="col">Categoría</th>
+        <th scope="col">Idioma</th>
+        <th scope="col">País</th>
+        <th scope="col">Estado</th>
+        <th scope="col" class="num">Peers</th>
+        <th scope="col">Última verificación</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      {% set channel = row.channel %}
+      {% set check = row.check %}
+      <tr>
+        <td class="thumb">
+          {% if row.screenshot_url %}
+          <img src="{{ row.screenshot_url }}" alt="Captura de {{ channel.title }}" width="96" height="54" loading="lazy">
+          {% else %}
+          <span class="no-thumb" aria-label="Sin captura"></span>
+          {% endif %}
+        </td>
+        <td class="title">{{ channel.title }}</td>
+        <td><code title="{{ channel.content_id }}">{{ channel.content_id | short_hash }}</code></td>
+        <td>{{ channel.category.name if channel.category else "—" }}</td>
+        <td>
+          {% if channel.language %}<abbr title="{{ language_name(channel.language) }}">{{ channel.language }}</abbr>{% else %}—{% endif %}
+        </td>
+        <td>
+          {% if channel.country %}<abbr title="{{ country_name(channel.country) }}">{{ channel.country }}</abbr>{% else %}—{% endif %}
+        </td>
+        <td>
+          {% if check %}
+          <span class="status status-{{ check.status.value }}"{% if check.error_message %} title="{{ check.error_message }}"{% endif %}>{{ status_labels[check.status] }}</span>
+          {% else %}
+          <span class="status status-unchecked">Sin verificar</span>
+          {% endif %}
+        </td>
+        <td class="num">{{ check.peers if check and check.peers is not none else "—" }}</td>
+        <td>
+          {% if check %}<time datetime="{{ check.checked_at.isoformat() }}">{{ check.checked_at | localtime }}</time>{% else %}Nunca{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<section class="empty-state">
+  <p class="empty-title">Todavía no hay canales en el catálogo.</p>
+  <p>Cuando agregues un Content ID o un enlace <code>acestream://</code>, aparecerá aquí con su estado y su última verificación.</p>
+</section>
+{% endif %}
+{% endblock %}
