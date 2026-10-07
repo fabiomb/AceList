@@ -1,0 +1,6 @@
+<p class="batch-counts">
+  {% for status, label in status_labels.items() %}
+  {% if batch.counts[status.value] %}<span class="status status-{{ status.value }}">{{ label }}: {{ batch.counts[status.value] }}</span>{% endif %}
+  {% endfor %}
+  {% if batch.counts["failed"] %}<span class="status status-error">Fallidas: {{ batch.counts["failed"] }}</span>{% endif %}
+</p>

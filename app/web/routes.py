@@ -6,21 +6,28 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.acestream.errors import ContentNotFoundError, EngineError
-from app.db.models import Channel, Check, CheckStatus
+from app.db.models import Channel, Check
 from app.services import catalog, categories, channels, checks, listing, player
 from app.services.errors import NotFoundError, ServiceError
 from app.services.iso import country_name, language_name
-from app.services.listing import DEFAULT_DESCENDING, UNCHECKED, ChannelQuery, SortKey
+from app.services.listing import DEFAULT_DESCENDING, ChannelQuery, SortKey
 from app.services.screenshots import SCREENSHOTS_SUBDIR
-from app.web.deps import EngineDep, SessionDep, SettingsDep
+from app.web.check_routes import start_checks
+from app.web.deps import (
+    CheckRunnerDep,
+    EngineDep,
+    EngineFactoryDep,
+    SessionDep,
+    SessionFactoryDep,
+    SettingsDep,
+)
 from app.web.forms import ChannelForm, resolve_category
+from app.web.query import parse_query
 from app.web.templating import templates
 
 router = APIRouter()
 
 FormField = Annotated[str, Form()]
-
-STATUS_FILTERS = [*(s.value for s in CheckStatus), UNCHECKED]
 
 
 @dataclass(frozen=True)
@@ -81,31 +88,6 @@ def _render_form(
     )
 
 
-def _parse_query(params) -> ChannelQuery:
-    """Reads filters and order from the URL; values that make no sense are ignored."""
-    text = params.get("q", "").strip() or None
-    category = params.get("category", "")
-    language = params.get("language", "").strip().lower()
-    country = params.get("country", "").strip().upper()
-    status = params.get("status", "")
-    try:
-        sort = SortKey(params.get("sort", ""))
-    except ValueError:
-        sort = SortKey.TITLE
-    direction = params.get("dir")
-    return ChannelQuery(
-        text=text,
-        category_id=int(category) if category.isdigit() else None,
-        language=language if language_name(language) else None,
-        country=country if country_name(country) else None,
-        status=status if status in STATUS_FILTERS else None,
-        sort=sort,
-        descending=direction == "desc"
-        if direction in ("asc", "desc")
-        else DEFAULT_DESCENDING[sort],
-    )
-
-
 def _sort_links(request: Request, query: ChannelQuery) -> dict[str, str]:
     """URL for each column header: the active column flips, others start at their default."""
     links = {}
@@ -118,7 +100,7 @@ def _sort_links(request: Request, query: ChannelQuery) -> dict[str, str]:
 
 @router.get("/", response_class=HTMLResponse, name="channel_list")
 def channel_list(request: Request, session: SessionDep):
-    query = _parse_query(request.query_params)
+    query = parse_query(request.query_params)
     rows = [
         ChannelRow(channel, check, _screenshot_url(request, check))
         for channel, check in listing.search_channels(session, query)
@@ -207,17 +189,17 @@ def channel_detail(request: Request, session: SessionDep, channel_id: int):
 
 @router.post("/channels/{channel_id}/check", name="channel_check")
 def channel_check(
-    request: Request, session: SessionDep, client: EngineDep, settings: SettingsDep, channel_id: int
+    request: Request,
+    session: SessionDep,
+    session_factory: SessionFactoryDep,
+    engine_factory: EngineFactoryDep,
+    settings: SettingsDep,
+    runner: CheckRunnerDep,
+    channel_id: int,
 ):
     _get_channel_or_404(session, channel_id)
-    # Blocks while the engine is polled; never raises for engine problems, they are stored.
-    catalog.check_channel(
-        session,
-        client,
-        channel_id,
-        settings=settings.verification(),
-        capture=settings.capture(),
-    )
+    # In the background: the detail page shows the progress and reloads when it is done.
+    start_checks(runner, [channel_id], session_factory, engine_factory, settings)
     return _redirect(request, "channel_detail", channel_id=channel_id)
 
 
