@@ -33,4 +33,4 @@ jobs:
           ruff format --check .
 
       - name: Test
-        run: pytest
+        run: pytest --cov

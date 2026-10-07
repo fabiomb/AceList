@@ -1,8 +1,11 @@
 import os
+import tempfile
 
 # Set before the app is imported: a test that forgets to simulate the engine must fail,
-# never reach a real engine running on the developer's machine.
+# never reach a real engine running on the developer's machine, and nothing may be
+# written to the repository's data directory.
 os.environ["ACELIST_ENGINE_URL"] = "http://engine.invalid:6878"
+os.environ["ACELIST_DATA_DIR"] = tempfile.mkdtemp(prefix="acelist-tests-")
 
 import httpx
 import pytest
