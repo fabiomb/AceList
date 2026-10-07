@@ -1,3 +1,4 @@
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -17,7 +18,7 @@ from app.web.routes import router
 from app.web.templating import STATIC_DIR
 
 HOST = "127.0.0.1"
-PORT = 8000
+PORT = int(os.environ.get("ACELIST_PORT", "8000"))
 # Requests naming any other host are refused, so a web page cannot reach the app
 # through DNS rebinding even though it listens on loopback.
 ALLOWED_HOSTS = [HOST, "localhost"]
