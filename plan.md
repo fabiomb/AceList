@@ -40,7 +40,7 @@ Aplicación local para catalogar enlaces Acestream (Content ID), verificar si si
 
 - **channel**: `id`, `title`, `content_id` (40 hex, único), `category_id`, `language` (ISO 639-1), `country` (ISO 3166-1 alpha-2), `created_at`, `updated_at`.
 - **category**: `id`, `name` (único).
-- **check** (verificación): `id`, `channel_id`, `checked_at`, `status` (`alive` / `no_peers` / `not_found` / `error`), `peers`, `speed_down`, `screenshot_path`, `error_message`.
+- **check_result** (verificación; clase `Check`): `id`, `channel_id`, `checked_at`, `status` (`alive` / `no_peers` / `not_found` / `error`), `peers`, `speed_down`, `infohash` (el engine resuelve el Content ID a otro infohash, ver [docs/engine-api.md](docs/engine-api.md)), `screenshot_path`, `error_message`.
 - **setting**: `key`, `value` (URL del engine, ruta de VLC, ruta de ffmpeg).
 
 El estado "actual" de un canal se deriva de su última verificación; el historial completo se conserva.

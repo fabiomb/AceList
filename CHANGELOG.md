@@ -12,3 +12,4 @@ Todos los cambios relevantes del proyecto se registran aquí. Formato basado en 
 - Project skeleton (#1): `pyproject.toml`, package `app/` with a `/health` endpoint bound to `127.0.0.1`, `.gitignore`, ruff and pytest configuration, and a first test suite.
 - GitHub Actions workflow (#2) running ruff and pytest on Python 3.11 and 3.12 over `windows-latest`.
 - `docs/engine-api.md` (#3): Acestream engine HTTP API observed against engine 3.1.74, including session states, error behavior, the Content ID vs infohash difference, and a validated ffmpeg frame capture.
+- Database schema (#4): SQLAlchemy models for `channel`, `category`, `check_result` and `setting`, SQLite session factory with foreign keys enforced, and the initial Alembic migration in `migrations/`. Content ID format, check status values and category-in-use deletion are enforced by the database.

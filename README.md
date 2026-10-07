@@ -2,7 +2,7 @@
 
 Catálogo local de enlaces Acestream. Valida el Content ID, comprueba si hay peers, intenta capturar una imagen del stream y permite abrir el canal en un reproductor como VLC. Guarda la fecha de cada verificación porque los enlaces mueren y se reemplazan.
 
-> Estado: **fase 0 en curso**. Existe el esqueleto del proyecto, aún sin funcionalidades; ver [plan.md](plan.md) y [CHANGELOG.md](CHANGELOG.md).
+> Estado: **fase 1 en curso**. Existen el esqueleto, el CI, la documentación de la API del engine y el esquema de base de datos; aún sin funcionalidades de usuario. Ver [plan.md](plan.md) y [CHANGELOG.md](CHANGELOG.md).
 
 ## Funcionalidades previstas
 
@@ -33,6 +33,7 @@ python -m venv .venv
 .\.venv\Scripts\ruff check .
 .\.venv\Scripts\pytest
 .\.venv\Scripts\python -m app.main   # http://127.0.0.1:8000/health
+.\.venv\Scripts\alembic upgrade head # crea data/acelist.db
 ```
 
 ## Uso
