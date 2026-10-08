@@ -63,7 +63,10 @@ def _check_listed(request, session, session_factory, engine_factory, settings, r
     ids = [channel.id for channel, _ in listing.search_channels(session, query)]
     mode = Screenshots.ALWAYS if force else Screenshots.NEVER
     start_checks(runner, ids, session_factory, engine_factory, settings, screenshots=mode)
-    url = request.url_for("channel_list").include_query_params(**request.query_params)
+    params = dict(request.query_params)
+    # Back to the view the checks were started from, with the same filters.
+    view = "channel_gallery" if params.pop("view", None) == "gallery" else "channel_list"
+    url = request.url_for(view).include_query_params(**params)
     # 303 turns the POST into a GET, so reloading the list never starts the checks again.
     return RedirectResponse(url, status_code=303)
 

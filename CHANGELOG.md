@@ -4,6 +4,9 @@ Todos los cambios relevantes del proyecto se registran aquí. Formato basado en 
 
 ## [Sin publicar]
 
+### Agregado
+- Gallery view (#58): `/gallery` shows the channels as a Netflix-like grid, one section per category (A-Z, uncategorized last). Each tile has the newest screenshot (or the title's initials), a status badge, a play button on hover, the title below and tags for resolution, category, language and country. It uses the same URL filters as the list, with an "Ordenar por" select, and a Lista/Galería switch keeps the filters; batch checks started from the gallery come back to it.
+
 ### Corregido
 - List thumbnails no longer vanish after a check (#57): the list shows each channel's newest screenshot, which is usually older than its latest check, instead of only the latest check's. Checking ("Verificar") now only tests availability and peers and never takes screenshots; they come from "Regenerar capturas" / "Nueva captura", and from the first check of a channel added or imported without one. No screenshot was ever deleted.
 

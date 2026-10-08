@@ -12,6 +12,7 @@ Catálogo local de enlaces Acestream. Valida el Content ID, comprueba si hay pee
 - Historial de verificaciones con fecha y captura de cada una.
 - Re-verificación de un canal o de todos los del listado filtrado, en segundo plano y con progreso, y regeneración de capturas.
 - Listado con orden (título, última verificación, peers, estado) y filtros (texto, categoría, idioma, país, estado, resolución), guardables en marcadores, y botón para copiar el hash.
+- Galería tipo Netflix: los canales en tarjetas con su captura, agrupados por categoría, con etiquetas de resolución, categoría, idioma y país.
 - Edición y borrado con confirmación; categoría, idioma y país por canal.
 - Botón para abrir el canal en VLC.
 - Ajustes con autodetección de VLC, ffmpeg y el engine, y prueba de conexión.
@@ -46,8 +47,9 @@ Si AceList ya está funcionando, el script solo abre el navegador.
 2. **Agregar un canal.** En *Canales → Agregar canal*, pega un Content ID (40 caracteres hexadecimales) o un enlace `acestream://` y, si quieres, título, categoría, idioma, país y resolución. Sin título se usa el nombre que publica el stream (sin las URLs que a veces trae); si el engine aún no lo conoce, queda un título provisional en cursiva que se completa en la siguiente verificación. Al guardar se verifica con el engine: puede tardar unos segundos.
 3. **Importar varios.** En *Importar*, pega una lista con un enlace por línea. El texto junto al enlace se usa como título (`Partido - acestream://…`), y en una lista M3U se usa el título de `#EXTINF`. El resumen indica qué se creó, qué estaba repetido y qué líneas no se entendieron. Los canales nuevos se verifican en segundo plano.
 4. **Revisar el catálogo.** El listado muestra la miniatura, la resolución, el estado y los peers de la **última** verificación, y hace cuánto fue (la fecha exacta al pasar el ratón). Haz clic en las cabeceras para ordenar y usa la barra de filtros; la URL guarda la vista. El botón junto al hash lo copia. **Verificar los N canales** vuelve a comprobar la disponibilidad y los peers de lo que se ve, en segundo plano, con una barra de progreso; no toca las capturas. **Regenerar capturas** además saca una captura nueva de cada canal activo (y actualiza su resolución): tarda más y pide confirmación. Los canales nuevos obtienen su primera captura al agregarlos o importarlos.
-5. **Detalle.** Al hacer clic en un título se ve la última captura, todos los datos y el historial de verificaciones. Desde allí se puede **verificar de nuevo**, sacar una **nueva captura**, **abrir en el reproductor**, editar o borrar. El historial muestra también el tamaño exacto de cada captura.
-6. **Reproducir.** **Reproducir** (en el listado) o **Abrir en reproductor** (en el detalle) inicia el stream en el engine y lo abre en VLC.
+5. **Galería.** El selector **Lista / Galería** (o *Galería* en la barra superior) muestra los mismos canales como tarjetas con su captura, agrupadas por categoría. Usa los mismos filtros; el orden se elige en *Ordenar por*. Al pasar el ratón por una tarjeta aparece el botón para reproducir.
+6. **Detalle.** Al hacer clic en un título se ve la última captura, todos los datos y el historial de verificaciones. Desde allí se puede **verificar de nuevo**, sacar una **nueva captura**, **abrir en el reproductor**, editar o borrar. El historial muestra también el tamaño exacto de cada captura.
+7. **Reproducir.** **Reproducir** (en el listado) o **Abrir en reproductor** (en el detalle) inicia el stream en el engine y lo abre en VLC.
 
 ### Estados de un canal
 
