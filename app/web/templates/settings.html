@@ -70,7 +70,7 @@
     <p class="hint">Deja una ruta vacía para detectarla automáticamente.</p>
     {{ path("vlc_path", "VLC", "Se usa para reproducir los canales.") }}
     {{ path("ffmpeg_path", "ffmpeg", "Se usa para las capturas.") }}
-    {{ path("acestream_path", "Engine de Ace Stream", "Solo informativo por ahora.") }}
+    {{ path("acestream_path", "Engine de Ace Stream", "Se usa en «Iniciar» cuando Ace Stream está apagado.") }}
     <div class="actions">
       <button type="submit" class="button" formnovalidate formaction="{{ url_for('settings_detect') }}">Autodetectar rutas</button>
     </div>

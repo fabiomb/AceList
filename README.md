@@ -43,6 +43,7 @@ Si AceList ya está funcionando, el script solo abre el navegador.
 
 ## Uso
 
+0. **Ace Stream.** La barra superior indica si Ace Stream está abierto (verde) o apagado (rojo). Si está apagado, **Iniciar** lo abre y espera a que responda; mientras está apagado no se verifica nada, para no marcar los canales como fallidos por culpa del servidor.
 1. **Ajustes.** La primera vez, entra en *Ajustes*, pulsa **Autodetectar rutas** y luego **Guardar**. Con **Probar conexión** se comprueba que el engine de Ace Stream responde.
 2. **Agregar un canal.** En *Canales → Agregar canal*, pega un Content ID (40 caracteres hexadecimales) o un enlace `acestream://` y, si quieres, título, categoría, idioma, país y resolución. Sin título se usa el nombre que publica el stream (sin las URLs que a veces trae); si el engine aún no lo conoce, queda un título provisional en cursiva que se completa en la siguiente verificación. Al guardar se verifica con el engine: puede tardar unos segundos.
 3. **Importar varios.** En *Importar*, pega una lista con un enlace por línea. El texto junto al enlace se usa como título (`Partido - acestream://…`), y en una lista M3U se usa el título de `#EXTINF`. El resumen indica qué se creó, qué estaba repetido y qué líneas no se entendieron. Los canales nuevos se verifican en segundo plano.
@@ -92,7 +93,8 @@ No hay usuarios ni contraseñas: no lo expongas a la red.
 
 | Síntoma | Qué revisar |
 |---------|-------------|
-| Todo sale en "Error" | Que Ace Stream esté abierto. En *Ajustes*, **Probar conexión**. |
+| "Ace Stream apagado" en la barra superior | Pulsa **Iniciar**, o abre Ace Stream a mano. Si no hay botón, indica la ruta de `ace_engine.exe` en *Ajustes*. |
+| El indicador está en verde pero todo sale en "Error" | En *Ajustes*, revisa la URL del engine con **Probar conexión**. |
 | "No se encontró VLC" | Instala VLC o indica la ruta de `vlc.exe` en *Ajustes*. |
 | Canales activos sin captura | ffmpeg no está instalado o no se encuentra: **Autodetectar rutas** en *Ajustes* o indica la ruta de `ffmpeg.exe`. |
 | El navegador no abre la página | Otro programa usa el puerto 8000: `.\start.ps1 -Port 8080`. |

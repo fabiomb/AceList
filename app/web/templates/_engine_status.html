@@ -12,5 +12,12 @@
   <span>Ace Stream {{ engine_version.version }}</span>
   {% else %}
   <span>Ace Stream apagado</span>
+  {% if engine_error %}<span class="engine-error">{{ engine_error }}</span>{% endif %}
+  {% if engine_can_start %}
+  <button type="button" class="engine-start" hx-post="{{ url_for('engine_start') }}"
+          hx-target="#engine-status" hx-swap="outerHTML" hx-disabled-elt="this">
+    <span class="when-idle">Iniciar</span><span class="when-busy">Iniciando…</span>
+  </button>
+  {% endif %}
   {% endif %}
 </div>
