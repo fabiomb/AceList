@@ -20,27 +20,68 @@ Catálogo local de enlaces Acestream. Valida el Content ID, comprueba si hay pee
 
 ## Requisitos
 
-- Windows 10 u 11 (otras plataformas no se prueban).
-- [Python](https://www.python.org/downloads/) 3.11 o superior.
-- [Ace Stream Media](https://www.acestream.org/) instalado y abierto (su engine responde en `http://127.0.0.1:6878`).
+- Windows 10 u 11 de 64 bits.
+- [Ace Stream Media](https://www.acestream.org/) instalado (su engine responde en `http://127.0.0.1:6878`). AceList puede abrirlo con el botón **Iniciar** de la barra superior.
 - [VLC](https://www.videolan.org/vlc/) para reproducir.
 - [ffmpeg](https://ffmpeg.org/download.html) para las capturas (opcional: sin ffmpeg los canales se verifican igual, sin imagen).
 
-## Instalación y arranque
+No hace falta instalar Python: el ejecutable lo lleva dentro.
+
+## Instalación
+
+1. En la página de [releases](https://github.com/fabiomb/AceList/releases/latest), descarga **`AceList-<versión>-win64.zip`**.
+2. Descomprímelo donde quieras, por ejemplo en `Documentos\AceList`.
+3. Haz doble clic en **`AceList.exe`**.
+
+Se abre una consola que muestra lo que hace AceList y, cuando está listo, el navegador en `http://127.0.0.1:8000/`. Deja la consola abierta mientras lo uses; ciérrala para salir. Si AceList ya estaba abierto, solo se abre el navegador. Si el puerto 8000 lo usa otro programa, AceList toma el siguiente libre y lo indica en la consola.
+
+### Aviso de Windows la primera vez
+
+AceList todavía no está firmado digitalmente, así que la primera vez Windows puede mostrar **"Windows protegió su PC"** (SmartScreen). Es el aviso habitual para programas que aún no son conocidos, no un diagnóstico de virus. Para abrirlo:
+
+1. Pulsa **Más información**.
+2. Pulsa **Ejecutar de todos modos**.
+
+Para comprobar que el zip es el original, compara su huella con la del archivo `.sha256` publicado junto a él:
+
+```powershell
+Get-FileHash .\AceList-1.3.0-win64.zip -Algorithm SHA256
+```
+
+### Tus datos
+
+La base de datos y las capturas se guardan en **`%LOCALAPPDATA%\AceList`** (escribe esa ruta en la barra del Explorador para abrirla), no en la carpeta del programa. Para hacer una copia de seguridad, copia esa carpeta o usa **Exportar** en el listado.
+
+### Actualizar
+
+Cierra AceList, borra la carpeta del programa y descomprime la versión nueva en su lugar. Tus canales siguen en `%LOCALAPPDATA%\AceList` y la versión nueva actualiza la base de datos sola al arrancar.
+
+### Si usabas la versión con `start.bat`
+
+Esa versión guarda los datos en la carpeta `data\` del código. Para llevarlos al ejecutable, una de estas dos opciones:
+
+- **Exportar e importar:** en la versión vieja, **Exportar** en el listado; en el ejecutable, sube el archivo en **Importar**. Se pasan los canales con todos sus datos, pero no el historial ni las capturas.
+- **Copiar la carpeta:** con las dos versiones cerradas, copia el contenido de `data\` (`acelist.db` y `screenshots\`) a `%LOCALAPPDATA%\AceList`. Se pasa todo, incluido el historial.
+
+### Opciones
+
+```powershell
+.\AceList.exe --port 8080      # usar ese puerto
+.\AceList.exe --no-browser     # no abrir el navegador
+```
+
+### Desinstalar
+
+Borra la carpeta del programa. Si tampoco quieres conservar tus canales, borra `%LOCALAPPDATA%\AceList`.
+
+## Desde el código
+
+Si prefieres ejecutarlo desde el código fuente (necesita [Python](https://www.python.org/downloads/) 3.11 o superior):
 
 1. Descarga o clona el repositorio.
 2. Haz doble clic en **`start.bat`**.
 
-La primera vez crea el entorno virtual e instala las dependencias (tarda un minuto). Después aplica las migraciones de la base de datos, arranca el servidor y abre `http://127.0.0.1:8000/` en el navegador. Para detenerlo, pulsa Ctrl+C en la ventana de la consola o ciérrala.
-
-Desde PowerShell se pueden pasar opciones:
-
-```powershell
-.\start.ps1 -Port 8080      # otro puerto
-.\start.ps1 -NoBrowser      # no abrir el navegador
-```
-
-Si AceList ya está funcionando, el script solo abre el navegador.
+La primera vez crea el entorno virtual e instala las dependencias (tarda un minuto). Después aplica las migraciones, arranca el servidor y abre el navegador. Los datos quedan en la carpeta `data\` del repositorio. Desde PowerShell, `.\start.ps1 -Port 8080` usa otro puerto y `.\start.ps1 -NoBrowser` no abre el navegador.
 
 ## Uso
 
@@ -69,8 +110,8 @@ Los valores de *Ajustes* se guardan en la base de datos y tienen prioridad. Las 
 
 | Variable | Por defecto | Uso |
 |----------|-------------|-----|
-| `ACELIST_DATA_DIR` | `data` | Carpeta de la base de datos (`acelist.db`) y las capturas (`screenshots/`). |
-| `ACELIST_PORT` | `8000` | Puerto local del servidor. |
+| `ACELIST_DATA_DIR` | `%LOCALAPPDATA%\AceList` (ejecutable) o `data` (código) | Carpeta de la base de datos (`acelist.db`) y las capturas (`screenshots/`). |
+| `ACELIST_PORT` | `8000` | Puerto local con `start.bat`; el ejecutable usa `--port`. |
 | `ACELIST_ENGINE_URL` | `http://127.0.0.1:6878` | URL del engine de Ace Stream. |
 | `ACELIST_ENGINE_TIMEOUT` | `15` | Segundos de espera de cada petición al engine. |
 | `ACELIST_VLC_PATH` | autodetección | Ruta de `vlc.exe`. |
@@ -78,7 +119,7 @@ Los valores de *Ajustes* se guardan en la base de datos y tienen prioridad. Las 
 | `ACELIST_SCREENSHOT_TIMEOUT` | `30` | Segundos máximos para sacar una captura. |
 | `ACELIST_CHECK_CONCURRENCY` | `2` | Verificaciones simultáneas en segundo plano. |
 
-Para hacer una copia de seguridad basta con copiar la carpeta `data/`.
+Para hacer una copia de seguridad basta con copiar la carpeta de datos.
 
 ## Seguridad
 
@@ -98,8 +139,11 @@ No hay usuarios ni contraseñas: no lo expongas a la red.
 | El indicador está en verde pero todo sale en "Error" | En *Ajustes*, revisa la URL del engine con **Probar conexión**. |
 | "No se encontró VLC" | Instala VLC o indica la ruta de `vlc.exe` en *Ajustes*. |
 | Canales activos sin captura | ffmpeg no está instalado o no se encuentra: **Autodetectar rutas** en *Ajustes* o indica la ruta de `ffmpeg.exe`. |
-| El navegador no abre la página | Otro programa usa el puerto 8000: `.\start.ps1 -Port 8080`. |
-| "Hace falta Python 3.11 o superior" | Instala Python desde python.org marcando *Add python.exe to PATH*. |
+| "Windows protegió su PC" al abrir `AceList.exe` | Es SmartScreen con un programa sin firma: **Más información → Ejecutar de todos modos** (ver [Aviso de Windows la primera vez](#aviso-de-windows-la-primera-vez)). |
+| El antivirus bloquea `AceList.exe` | Algunos antivirus desconfían de los programas hechos con PyInstaller (falso positivo). Comprueba el SHA-256 del zip y añade una excepción para la carpeta de AceList. |
+| La consola se cierra con un mensaje de error | Léelo antes de pulsar Enter: suele ser que no hay puertos libres o que la carpeta de datos no se puede escribir. |
+| El navegador no abre la página | Mira en la consola la dirección que indica AceList (puede haber usado otro puerto) y ábrela a mano. |
+| "Hace falta Python 3.11 o superior" (con `start.bat`) | Instala Python desde python.org marcando *Add python.exe to PATH*, o usa el ejecutable. |
 
 ## Desarrollo
 
@@ -114,6 +158,8 @@ python -m venv .venv
 ```
 
 Los tests no necesitan el engine ni ffmpeg: el engine se simula con `respx` y nunca se contacta uno real.
+
+Para compilar el ejecutable: `pip install -e ".[build]"` y `python windows\build.py` (ver [docs/packaging.md](docs/packaging.md)). Al publicar una release en GitHub, el CI lo compila, lo prueba y adjunta el zip.
 
 Stack: Python, FastAPI, SQLite + SQLAlchemy (Alembic), Jinja2 + HTMX, httpx, ffmpeg. Detalle y justificación en [plan.md](plan.md).
 
@@ -136,4 +182,5 @@ El seguimiento se hace con [issues de GitHub](https://github.com/fabiomb/AceList
 - [idea.md](idea.md): idea original.
 - [plan.md](plan.md): alcance, arquitectura, modelo de datos y fases.
 - [docs/engine-api.md](docs/engine-api.md): API del engine de Acestream observada en la práctica.
+- [docs/packaging.md](docs/packaging.md): cómo se empaqueta el ejecutable para Windows.
 - [CHANGELOG.md](CHANGELOG.md): registro de cambios.
