@@ -4,6 +4,9 @@ Todos los cambios relevantes del proyecto se registran aquí. Formato basado en 
 
 ## [Sin publicar]
 
+### Corregido
+- List thumbnails no longer vanish after a check (#57): the list shows each channel's newest screenshot, which is usually older than its latest check, instead of only the latest check's. Checking ("Verificar") now only tests availability and peers and never takes screenshots; they come from "Regenerar capturas" / "Nueva captura", and from the first check of a channel added or imported without one. No screenshot was ever deleted.
+
 ### Cambiado
 - Compact channel list (#45): the creation date column is gone (sorting by it still works through the URL) and the last check shows as relative time ("hace 3 h", the date after a month) with the full date on hover, under a shorter "Verificado" header.
 - Icon actions (#46): play, edit and delete in each list row are now inline SVG icons (`_icons.html`) with accessible names and tooltips.

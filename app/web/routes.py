@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.acestream.errors import ContentNotFoundError, EngineError
 from app.db.models import Channel, Check
 from app.services import catalog, categories, channels, checks, listing, player
+from app.services.catalog import Screenshots
 from app.services.errors import NotFoundError, ServiceError
 from app.services.iso import country_name, language_name
 from app.services.listing import DEFAULT_DESCENDING, ChannelQuery, SortKey
@@ -44,9 +45,14 @@ class CheckRow:
 
 
 def _screenshot_url(request: Request, check: Check | None) -> str | None:
-    if check is None or not check.screenshot_path:
+    return screenshot_url(request, check.screenshot_path if check else None)
+
+
+def screenshot_url(request: Request, path: str | None) -> str | None:
+    """URL of a stored screenshot path, or None if it is outside the screenshots folder."""
+    if not path:
         return None
-    folder, _, name = check.screenshot_path.partition("/")
+    folder, _, name = path.partition("/")
     # Only files directly under the screenshots folder are served.
     if folder != SCREENSHOTS_SUBDIR or not name or "/" in name:
         return None
@@ -101,8 +107,10 @@ def _sort_links(request: Request, query: ChannelQuery) -> dict[str, str]:
 @router.get("/", response_class=HTMLResponse, name="channel_list")
 def channel_list(request: Request, session: SessionDep):
     query = parse_query(request.query_params)
+    # The newest screenshot, which is usually older than the latest check.
+    shots = checks.latest_screenshots(session)
     rows = [
-        ChannelRow(channel, check, _screenshot_url(request, check))
+        ChannelRow(channel, check, screenshot_url(request, shots.get(channel.id)))
         for channel, check in listing.search_channels(session, query)
     ]
     filtered = any(
@@ -226,7 +234,12 @@ def channel_screenshot(
 ):
     _get_channel_or_404(session, channel_id)
     start_checks(
-        runner, [channel_id], session_factory, engine_factory, settings, force_capture=True
+        runner,
+        [channel_id],
+        session_factory,
+        engine_factory,
+        settings,
+        screenshots=Screenshots.ALWAYS,
     )
     return _redirect(request, "channel_detail", channel_id=channel_id)
 

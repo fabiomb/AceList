@@ -1,4 +1,5 @@
 import logging
+from enum import StrEnum
 from pathlib import Path
 
 from sqlalchemy import select
@@ -28,6 +29,14 @@ def parse_link(link: str) -> str:
         raise ValidationError(str(exc)) from exc
 
 
+class Screenshots(StrEnum):
+    """When a check of a live channel takes a screenshot."""
+
+    NEVER = "never"  # a plain check: availability and peers only
+    IF_MISSING = "if_missing"  # a new channel that has none yet
+    ALWAYS = "always"  # regenerating, or a new link that is another stream
+
+
 def check_channel(
     session: Session,
     client: EngineClient,
@@ -35,13 +44,13 @@ def check_channel(
     *,
     settings: VerificationSettings | None = None,
     capture: CaptureSettings | None = None,
-    force_capture: bool = False,
+    screenshots: Screenshots = Screenshots.NEVER,
     data_dir: Path = DATA_DIR,
 ) -> Check:
     """Verifies a channel and stores the result.
 
-    A live channel gets a screenshot only if it has none yet, or with `force_capture`:
-    capturing adds seconds per channel, so routine checks skip it.
+    By default only availability and peers are checked; `screenshots` decides whether a
+    live channel also gets a screenshot, which adds seconds per channel.
     Never raises for engine or screenshot problems: they end up in the stored check.
     Blocks while the engine is polled, so call it from a worker thread.
     """
@@ -50,7 +59,9 @@ def check_channel(
     if channel.title_pending:
         _name_from_stream(session, client, channel)
     capture = capture or CaptureSettings()
-    wants_screenshot = force_capture or not has_screenshot(session, channel_id)
+    wants_screenshot = screenshots is Screenshots.ALWAYS or (
+        screenshots is Screenshots.IF_MISSING and not has_screenshot(session, channel_id)
+    )
     screenshot: str | None = None
 
     def take_screenshot(stream: StreamSession) -> None:
@@ -137,7 +148,13 @@ def add_channel(
         resolution=resolution,
     )
     check_channel(
-        session, client, channel.id, settings=settings, capture=capture, data_dir=data_dir
+        session,
+        client,
+        channel.id,
+        settings=settings,
+        capture=capture,
+        screenshots=Screenshots.IF_MISSING,
+        data_dir=data_dir,
     )
     return channel
 
@@ -176,7 +193,7 @@ def edit_channel(
             channel_id,
             settings=settings,
             capture=capture,
-            force_capture=True,
+            screenshots=Screenshots.ALWAYS,
             data_dir=data_dir,
         )
     return channel

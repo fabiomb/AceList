@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.db.models import CheckStatus
 from app.services import catalog, listing
 from app.services.batch import CheckRunner, CheckWork
+from app.services.catalog import Screenshots
 from app.services.settings import AppSettings
 from app.web.deps import (
     CheckRunnerDep,
@@ -25,7 +26,7 @@ def check_work(
     engine_factory: EngineFactory,
     settings: AppSettings,
     *,
-    force_capture: bool = False,
+    screenshots: Screenshots = Screenshots.NEVER,
 ) -> CheckWork:
     """One background check: its own session and engine client, as it runs in another thread."""
 
@@ -37,7 +38,7 @@ def check_work(
                 channel_id,
                 settings=settings.verification(),
                 capture=settings.capture(),
-                force_capture=force_capture,
+                screenshots=screenshots,
             )
             return check.status
 
@@ -51,16 +52,17 @@ def start_checks(
     engine_factory: EngineFactory,
     settings: AppSettings,
     *,
-    force_capture: bool = False,
+    screenshots: Screenshots = Screenshots.NEVER,
 ) -> None:
-    work = check_work(session_factory, engine_factory, settings, force_capture=force_capture)
+    work = check_work(session_factory, engine_factory, settings, screenshots=screenshots)
     runner.submit(channel_ids, work, max_workers=settings.check_concurrency)
 
 
 def _check_listed(request, session, session_factory, engine_factory, settings, runner, force):
     query = parse_query(request.query_params)
     ids = [channel.id for channel, _ in listing.search_channels(session, query)]
-    start_checks(runner, ids, session_factory, engine_factory, settings, force_capture=force)
+    mode = Screenshots.ALWAYS if force else Screenshots.NEVER
+    start_checks(runner, ids, session_factory, engine_factory, settings, screenshots=mode)
     url = request.url_for("channel_list").include_query_params(**request.query_params)
     # 303 turns the POST into a GET, so reloading the list never starts the checks again.
     return RedirectResponse(url, status_code=303)
