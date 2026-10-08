@@ -44,6 +44,29 @@ PyInstaller encuentra los módulos solo (tiene hooks para uvicorn, SQLAlchemy, J
 
 `pycountry\locales\` son traducciones de los nombres. AceList muestra los nombres en inglés y no las usa, así que se excluyen. El paquete recortado sigue listando los 442 idiomas y países.
 
+## Cómo compilar (#78)
+
+```powershell
+.\.venv\Scripts\python -m pip install -e ".[build]"   # PyInstaller 6.22.3 y Pillow
+.\.venv\Scripts\python windows\build.py
+```
+
+Deja en `dist\`:
+
+- `AceList\`: `AceList.exe` y `_internal\`;
+- `AceList-<versión>-win64.zip` y su `.sha256` (formato de `sha256sum`).
+
+| Archivo | Qué hace |
+|---------|----------|
+| `windows/acelist.spec` | Configuración de PyInstaller: datos incluidos, exclusión de `pycountry\locales` y `__pycache__`, ícono, consola visible, sin UPX y recurso de versión ("Detalles" en las propiedades del `.exe`), tomado de `app.__version__`. |
+| `windows/entry.py` | Punto de entrada: `app.launcher.run()`. |
+| `windows/build.py` | Compila, arma el zip y calcula el SHA-256. |
+| `windows/make_icon.py` | Dibuja el ícono (un televisor analógico) y el favicon. Solo hace falta para cambiar el dibujo: los `.ico` están en el repositorio. |
+
+El build es repetible pero no idéntico bit a bit: el zip cambia de hash en cada compilación (fechas de los archivos). Por eso el SHA-256 publicado es el del zip de cada release, calculado por el CI.
+
+La carpeta se llama `windows/` y no `packaging/` para no chocar con la librería `packaging` que usan pip, setuptools y PyInstaller.
+
 ## Pendiente
 
 - **Firma de código:** sin firma, SmartScreen avisa la primera vez ("Windows protegió su PC" → "Más información" → "Ejecutar de todos modos"). Decidido no firmar por ahora.

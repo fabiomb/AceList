@@ -26,6 +26,11 @@ dev = [
     "respx>=0.21",
     "ruff>=0.6",
 ]
+# To build the Windows executable (windows/build.py) and redraw its icon.
+build = [
+    "pyinstaller==6.22.3",
+    "pillow>=10",
+]
 
 [tool.setuptools.dynamic]
 version = {attr = "app.__version__"}
