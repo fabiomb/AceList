@@ -1,0 +1,85 @@
+name: Windows executable
+
+# Pull requests: build AceList.exe and run it, so a broken bundle shows up before merging.
+# Published releases: also attach the zip, its SHA-256 and a provenance attestation.
+on:
+  pull_request:
+    paths:
+      - "app/**"
+      - "migrations/**"
+      - "windows/**"
+      - "alembic.ini"
+      - "pyproject.toml"
+      - ".github/workflows/release.yml"
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: write # upload the zip to the release
+      id-token: write # sign the provenance attestation
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          # The Python inside AceList.exe: the newest one the CI tests.
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install dependencies
+        run: python -m pip install -e ".[build]"
+
+      - name: Read the version
+        id: version
+        shell: pwsh
+        run: |
+          $version = python -c "import app; print(app.__version__)"
+          "version=$version" >> $env:GITHUB_OUTPUT
+          if ("${{ github.event_name }}" -eq "release") {
+            $tag = "${{ github.event.release.tag_name }}"
+            if ($tag -ne "v$version") {
+              Write-Error "The release tag $tag does not match app.__version__ $version"
+              exit 1
+            }
+          }
+
+      - name: Build
+        run: python windows/build.py
+
+      - name: Smoke test
+        run: python windows/smoke_test.py --expect-version ${{ steps.version.outputs.version }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AceList-${{ steps.version.outputs.version }}-win64
+          path: |
+            dist/AceList-*-win64.zip
+            dist/AceList-*-win64.zip.sha256
+          if-no-files-found: error
+
+      # Provenance attestations need a public repository on GitHub's free plan.
+      - name: Attest provenance
+        if: github.event_name == 'release' && !github.event.repository.private
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: dist/AceList-*-win64.zip
+
+      - name: Attach to the release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" `
+            (Get-Item dist/AceList-*-win64.zip).FullName `
+            (Get-Item dist/AceList-*-win64.zip.sha256).FullName `
+            --clobber
