@@ -6,6 +6,7 @@ from fastapi.templating import Jinja2Templates
 from app.db.base import utcnow
 from app.db.models import CheckStatus, Resolution
 from app.services.iso import country_choices, country_name, language_choices, language_name
+from app.web.flash import flash_message
 
 WEB_DIR = Path(__file__).resolve().parent
 STATIC_DIR = WEB_DIR / "static"
@@ -56,6 +57,7 @@ templates.env.filters["short_hash"] = _short_hash
 templates.env.filters["ago"] = _ago
 templates.env.globals.update(
     status_labels=STATUS_LABELS,
+    flash_message=flash_message,
     resolution_labels=RESOLUTION_LABELS,
     language_name=language_name,
     country_name=country_name,

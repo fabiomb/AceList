@@ -127,12 +127,14 @@ def add_channel(
     resolution: str | None = None,
     settings: VerificationSettings | None = None,
     capture: CaptureSettings | None = None,
+    verify: bool = True,
     data_dir: Path = DATA_DIR,
 ) -> Channel:
     """Registers a channel from a Content ID or `acestream://` link and verifies it.
 
     The channel is saved before verifying, so an engine that is down leaves it stored
-    and unchecked instead of losing what the user typed. Without a title it
+    and unchecked instead of losing what the user typed; `verify=False` skips the
+    check outright (the caller already knows the engine is off). Without a title it
     gets the stream's name, or a provisional one until a check finds that name.
     """
     content_id = parse_link(link)
@@ -148,6 +150,8 @@ def add_channel(
         country=country,
         resolution=resolution,
     )
+    if not verify:
+        return channel
     try:
         check_channel(
             session,
@@ -172,10 +176,12 @@ def edit_channel(
     link: str | None = None,
     settings: VerificationSettings | None = None,
     capture: CaptureSettings | None = None,
+    verify: bool = True,
     data_dir: Path = DATA_DIR,
     **changes,
 ) -> Channel:
-    """Updates a channel; a new Content ID is verified again, other edits are not.
+    """Updates a channel; a new Content ID is verified again (unless `verify=False`),
+    other edits are not.
 
     `changes` accepts `title`, `category_id`, `language`, `country` and `resolution`.
     """
@@ -189,7 +195,7 @@ def edit_channel(
         changes["content_id"] = new_content_id
 
     channels.update_channel(session, channel_id, **changes)
-    if hash_changed:
+    if hash_changed and verify:
         # History is kept: it is how the user sees that the old link died. The new
         # link is another stream, so the old screenshots no longer show it.
         try:

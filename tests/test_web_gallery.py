@@ -108,7 +108,9 @@ def test_views_link_to_each_other_keeping_filters(web, catalog):
     assert 'href="http://127.0.0.1/gallery"' in web.get("/").text  # nav link
 
 
-def test_batch_actions_from_the_gallery_come_back_to_it(web, catalog, engine_down, wait_for_checks):
+def test_batch_actions_from_the_gallery_come_back_to_it(
+    web, catalog, engine_empty, wait_for_checks
+):
     page = web.get("/gallery?q=uno").text
     assert 'action="http://127.0.0.1/checks?q=uno&amp;view=gallery"' in page
 

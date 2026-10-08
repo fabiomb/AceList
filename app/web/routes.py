@@ -18,10 +18,12 @@ from app.web.deps import (
     CheckRunnerDep,
     EngineDep,
     EngineFactoryDep,
+    EngineProbeDep,
     SessionDep,
     SessionFactoryDep,
     SettingsDep,
 )
+from app.web.flash import ENGINE_DOWN, ENGINE_DOWN_SAVED, flash
 from app.web.forms import ChannelForm, resolve_category
 from app.web.query import parse_query
 from app.web.templating import templates
@@ -182,6 +184,7 @@ def channel_create(
     request: Request,
     session: SessionDep,
     client: EngineDep,
+    probe: EngineProbeDep,
     settings: SettingsDep,
     title: FormField = "",
     link: FormField = "",
@@ -195,6 +198,7 @@ def channel_create(
     data = form.validate(session)
     if data is None:
         return _render_form(request, session, form)
+    engine_up = probe() is not None
     try:
         # Blocks while the engine verifies the new channel; FastAPI runs it in a worker.
         channel = catalog.add_channel(
@@ -208,10 +212,12 @@ def channel_create(
             resolution=data.resolution,
             settings=settings.verification(),
             capture=settings.capture(),
+            verify=engine_up,
         )
     except ServiceError as exc:
         return _render_form(request, session, form, error=f"No se pudo guardar: {exc}")
-    return _redirect(request, "channel_detail", channel_id=channel.id)
+    response = _redirect(request, "channel_detail", channel_id=channel.id)
+    return response if engine_up else flash(response, ENGINE_DOWN_SAVED)
 
 
 @router.get("/channels/{channel_id}", response_class=HTMLResponse, name="channel_detail")
@@ -242,12 +248,16 @@ def channel_check(
     engine_factory: EngineFactoryDep,
     settings: SettingsDep,
     runner: CheckRunnerDep,
+    probe: EngineProbeDep,
     channel_id: int,
 ):
     _get_channel_or_404(session, channel_id)
+    response = _redirect(request, "channel_detail", channel_id=channel_id)
+    if probe() is None:
+        return flash(response, ENGINE_DOWN)
     # In the background: the detail page shows the progress and reloads when it is done.
     start_checks(runner, [channel_id], session_factory, engine_factory, settings)
-    return _redirect(request, "channel_detail", channel_id=channel_id)
+    return response
 
 
 @router.post("/channels/{channel_id}/screenshot", name="channel_screenshot")
@@ -258,9 +268,13 @@ def channel_screenshot(
     engine_factory: EngineFactoryDep,
     settings: SettingsDep,
     runner: CheckRunnerDep,
+    probe: EngineProbeDep,
     channel_id: int,
 ):
     _get_channel_or_404(session, channel_id)
+    response = _redirect(request, "channel_detail", channel_id=channel_id)
+    if probe() is None:
+        return flash(response, ENGINE_DOWN)
     start_checks(
         runner,
         [channel_id],
@@ -269,7 +283,7 @@ def channel_screenshot(
         settings,
         screenshots=Screenshots.ALWAYS,
     )
-    return _redirect(request, "channel_detail", channel_id=channel_id)
+    return response
 
 
 @router.post("/channels/{channel_id}/play", response_class=HTMLResponse, name="channel_play")
@@ -314,6 +328,7 @@ def channel_update(
     request: Request,
     session: SessionDep,
     client: EngineDep,
+    probe: EngineProbeDep,
     settings: SettingsDep,
     channel_id: int,
     title: FormField = "",
@@ -329,6 +344,8 @@ def channel_update(
     data = form.validate(session, channel_id=channel_id)
     if data is None:
         return _render_form(request, session, form, channel=channel)
+    # Only a new Content ID needs the engine.
+    engine_up = data.content_id == channel.content_id or probe() is not None
     try:
         # A changed Content ID is verified again; other edits do not touch the engine.
         catalog.edit_channel(
@@ -343,12 +360,14 @@ def channel_update(
             resolution=data.resolution,
             settings=settings.verification(),
             capture=settings.capture(),
+            verify=engine_up,
         )
     except ServiceError as exc:
         return _render_form(
             request, session, form, channel=channel, error=f"No se pudo guardar: {exc}"
         )
-    return _redirect(request, "channel_detail", channel_id=channel_id)
+    response = _redirect(request, "channel_detail", channel_id=channel_id)
+    return response if engine_up else flash(response, ENGINE_DOWN_SAVED)
 
 
 @router.get("/channels/{channel_id}/delete", response_class=HTMLResponse, name="channel_delete")

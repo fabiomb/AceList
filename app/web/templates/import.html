@@ -21,8 +21,11 @@
     <strong>{{ result.created | length }}</strong> {{ "canal creado" if result.created | length == 1 else "canales creados" }},
     <strong>{{ result.duplicates | length }}</strong> {{ "duplicado" if result.duplicates | length == 1 else "duplicados" }} y
     <strong>{{ result.invalid | length }}</strong> {{ "línea inválida" if result.invalid | length == 1 else "líneas inválidas" }}.
-    {% if result.created %}Los canales nuevos se están verificando en segundo plano.{% endif %}
+    {% if result.created and not engine_down %}Los canales nuevos se están verificando en segundo plano.{% endif %}
   </p>
+  {% if engine_down %}
+  <p class="notice notice-error" role="alert">Ace Stream no responde: los canales nuevos quedan sin verificar. Ábrelo y usa «Verificar» en el listado.</p>
+  {% endif %}
 
   {% if result.created %}
   <h3>Creados</h3>

@@ -269,3 +269,34 @@ def test_unknown_resolution_is_rejected(web, db, engine_down):
 
     assert response.status_code == 422
     assert "Resolución desconocida." in response.text
+
+
+# engine off (#63)
+
+
+def test_adding_with_the_engine_off_saves_unchecked_and_says_so(web, db, engine_down):
+    response = web.post("/channels/new", data=form())
+
+    [channel] = channels.list_channels(db)
+    assert checks.list_checks(db, channel.id) == []
+    assert "Se guardó el canal, pero Ace Stream no responde" in response.text
+
+
+def test_changing_the_hash_with_the_engine_off_saves_unchecked(web, db, engine_down):
+    channel = channels.create_channel(db, title="Uno", content_id=HASH_A)
+
+    response = web.post(f"/channels/{channel.id}/edit", data=form(title="Uno", link=HASH_B))
+
+    db.expire_all()
+    assert channels.get_channel(db, channel.id).content_id == HASH_B
+    assert checks.list_checks(db, channel.id) == []
+    assert "queda sin verificar" in response.text
+
+
+def test_editing_other_fields_never_asks_the_engine(web, db, engine_down):
+    channel = channels.create_channel(db, title="Uno", content_id=HASH_A)
+
+    response = web.post(f"/channels/{channel.id}/edit", data=form(title="Dos"))
+
+    assert not engine_down.called
+    assert "Ace Stream" not in response.text

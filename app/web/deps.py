@@ -4,11 +4,13 @@ from typing import Annotated
 from fastapi import Depends, Request
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.acestream.client import EngineClient
+from app.acestream.client import EngineClient, EngineVersion
+from app.acestream.errors import EngineError
 from app.services.batch import CheckRunner
 from app.services.settings import AppSettings, load_settings
 
 EngineFactory = Callable[[], EngineClient]
+EngineProbe = Callable[[], EngineVersion | None]
 
 
 def get_session_factory(request: Request) -> sessionmaker[Session]:
@@ -47,6 +49,22 @@ def get_engine_client(factory: EngineFactoryDep) -> Iterator[EngineClient]:
 
 
 EngineDep = Annotated[EngineClient, Depends(get_engine_client)]
+
+
+def get_engine_probe(factory: EngineFactoryDep) -> EngineProbe:
+    """Asks the engine for its version: None means it is off or unreachable."""
+
+    def probe() -> EngineVersion | None:
+        try:
+            with factory() as client:
+                return client.version()
+        except EngineError:
+            return None
+
+    return probe
+
+
+EngineProbeDep = Annotated[EngineProbe, Depends(get_engine_probe)]
 
 
 def get_check_runner(request: Request) -> CheckRunner:
