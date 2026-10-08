@@ -1,3 +1,5 @@
+import os
+import re
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -6,6 +8,7 @@ from fastapi.testclient import TestClient
 from app.db.models import CheckStatus
 from app.main import app
 from app.services import categories, channels, checks
+from app.web import templating
 from app.web.templating import _ago
 
 HASH_A = "78266c15035d0ad8cbc58f821733931e1de434ab"
@@ -230,3 +233,33 @@ def test_list_keeps_showing_the_newest_screenshot_after_checks_without_one(web, 
 
     assert 'src="/screenshots/newer.jpg"' in page
     assert "Sin peers" in page  # the state is still the latest check's
+
+
+def stylesheet_stamp(page):
+    match = re.search(r'/static/style\.css\?v=([0-9a-f]{10})"', page)
+    return match.group(1) if match else None
+
+
+def test_static_files_are_stamped_with_their_content(web):
+    # Browsers cache static files: a new stylesheet must come under a new URL.
+    page = web.get("/").text
+
+    stamp = stylesheet_stamp(page)
+    assert stamp is not None
+    assert re.search(r'/static/htmx\.min\.js\?v=[0-9a-f]{10}"', page)
+    assert re.search(r'/static/app\.js\?v=[0-9a-f]{10}"', page)
+    assert web.get(f"/static/style.css?v={stamp}").status_code == 200
+
+
+def test_an_edited_stylesheet_gets_a_new_stamp(web, tmp_path, monkeypatch):
+    css = tmp_path / "style.css"
+    css.write_text("a {}", encoding="utf-8")
+    monkeypatch.setattr(templating, "STATIC_DIR", tmp_path)
+    before = stylesheet_stamp(web.get("/").text)
+
+    css.write_text("a { color: red; }", encoding="utf-8")
+    stat = css.stat()
+    os.utime(css, ns=(stat.st_atime_ns, stat.st_mtime_ns + 1_000_000_000))
+
+    after = stylesheet_stamp(web.get("/").text)
+    assert before is not None and after is not None and before != after

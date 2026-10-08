@@ -10,6 +10,7 @@ Todos los cambios relevantes del proyecto se registran aquí. Formato basado en 
 - Start Ace Stream (#65): when the engine is off and `ace_engine.exe` is found (the "Engine de Ace Stream" setting, or the usual install folders), the indicator offers "Iniciar". It launches the engine detached and without a shell, waits up to 30 s for it to answer and shows the result, or says why it could not.
 
 ### Corregido
+- New styles and scripts now reach the browser right away: their URLs carry a hash of the file's content (`style.css?v=…`), so a browser can no longer keep an old stylesheet from its cache, which left "Iniciar" and "Iniciando…" showing together.
 - An engine that is off is no longer blamed on the channels (#62): when Ace Stream cannot be reached, no `error` check is stored. A background batch stops at the first such failure and says so ("Verificación interrumpida: Ace Stream no responde"), dropping the queued checks, and adding, importing or changing a link with the engine off saves the channel unchecked. Timeouts and other engine errors are still recorded as `error`.
 
 ## [1.1.0] - 2026-10-08

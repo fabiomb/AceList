@@ -1,6 +1,9 @@
+import hashlib
 from datetime import datetime
+from functools import lru_cache
 from pathlib import Path
 
+from fastapi import Request
 from fastapi.templating import Jinja2Templates
 
 from app.db.base import utcnow
@@ -47,6 +50,24 @@ def _ago(value: datetime, now: datetime | None = None) -> str:
     return value.astimezone().strftime("%Y-%m-%d")
 
 
+@lru_cache(maxsize=32)
+def _asset_digest(path: Path, mtime_ns: int) -> str:
+    # Keyed by modification time too, so an edited file gets a new digest without a restart.
+    return hashlib.sha256(path.read_bytes()).hexdigest()[:10]
+
+
+def static_url(request: Request, path: str) -> str:
+    """URL of a static file stamped with its content: a changed file is a new URL, so
+    browsers never keep using an old stylesheet or script from their cache."""
+    file = STATIC_DIR / path
+    url = request.url_for("static", path=path)
+    try:
+        version = _asset_digest(file, file.stat().st_mtime_ns)
+    except OSError:
+        return str(url)
+    return f"{url}?v={version}"
+
+
 def _short_hash(content_id: str) -> str:
     return f"{content_id[:8]}…{content_id[-4:]}"
 
@@ -58,6 +79,7 @@ templates.env.filters["ago"] = _ago
 templates.env.globals.update(
     status_labels=STATUS_LABELS,
     flash_message=flash_message,
+    static_url=static_url,
     resolution_labels=RESOLUTION_LABELS,
     language_name=language_name,
     country_name=country_name,
