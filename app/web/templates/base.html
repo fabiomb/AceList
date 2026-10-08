@@ -8,6 +8,7 @@
   <title>{% block title %}AceList{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}">
   <script src="{{ url_for('static', path='htmx.min.js') }}" defer></script>
+  <script src="{{ url_for('static', path='app.js') }}" defer></script>
 </head>
 <body hx-boost="true">
   <header class="topbar">
@@ -21,6 +22,7 @@
   <main class="content">
     {# Results of in-page actions, such as opening a channel in VLC. #}
     <div id="notices" aria-live="polite"></div>
+    <div id="announcer" class="visually-hidden" aria-live="polite"></div>
     {# A page that must not reload when checks end sets `reload_on_checks = false`. #}
     {% with batch = request.app.state.check_runner.current() %}
     {% with watch = batch.id if batch and reload_on_checks is not false else "" %}

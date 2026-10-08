@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_icons.html" import icon %}
+{% from "_icons.html" import copy_button, icon %}
 
 {% block title %}Canales · AceList{% endblock %}
 
@@ -112,7 +112,7 @@
           {% endif %}
         </td>
         <td class="title"><a href="{{ url_for('channel_detail', channel_id=channel.id) }}">{{ channel.title }}</a></td>
-        <td><code title="{{ channel.content_id }}">{{ channel.content_id | short_hash }}</code></td>
+        <td class="hash"><code title="{{ channel.content_id }}">{{ channel.content_id | short_hash }}</code>{{ copy_button(channel.content_id, "Copiar el hash de " ~ channel.title) }}</td>
         <td>{{ channel.category.name if channel.category else "—" }}</td>
         <td>
           {% if channel.language %}<abbr title="{{ language_name(channel.language) }}">{{ channel.language }}</abbr>{% else %}—{% endif %}

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_icons.html" import copy_button %}
 
 {% block title %}{{ channel.title }} · AceList{% endblock %}
 
@@ -52,7 +53,7 @@
     <dt>Última verificación</dt>
     <dd>{% if latest %}<time datetime="{{ latest.checked_at.isoformat() }}">{{ latest.checked_at | localtime }}</time>{% else %}Nunca{% endif %}</dd>
     <dt>Content ID</dt>
-    <dd><code class="wrap">{{ channel.content_id }}</code></dd>
+    <dd><code class="wrap">{{ channel.content_id }}</code>{{ copy_button(channel.content_id, "Copiar el hash") }}</dd>
     <dt>Enlace</dt>
     <dd><code class="wrap">acestream://{{ channel.content_id }}</code></dd>
     <dt>Categoría</dt>
