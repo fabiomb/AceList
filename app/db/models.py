@@ -14,6 +14,16 @@ class CheckStatus(StrEnum):
     ERROR = "error"
 
 
+class Resolution(StrEnum):
+    """Video resolution class of a channel, detected from its screenshots or set by hand."""
+
+    SD = "480p"
+    HD = "720p"
+    FULL_HD = "1080p"
+    UHD = "4k"
+    OTHER = "other"
+
+
 class Category(Base):
     __tablename__ = "category"
 
@@ -38,6 +48,11 @@ class Channel(Base):
         Index("ix_channel_language", "language"),
         Index("ix_channel_country", "country"),
         Index("ix_channel_created_at", "created_at"),
+        Index("ix_channel_resolution", "resolution"),
+        CheckConstraint(
+            "resolution IN (" + ", ".join(f"'{r.value}'" for r in Resolution) + ")",
+            name="resolution_valid",
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -49,6 +64,15 @@ class Channel(Base):
     )
     language: Mapped[str | None] = mapped_column(String(2))  # ISO 639-1, lowercase
     country: Mapped[str | None] = mapped_column(String(2))  # ISO 3166-1 alpha-2, uppercase
+    resolution: Mapped[Resolution | None] = mapped_column(
+        Enum(
+            Resolution,
+            native_enum=False,
+            create_constraint=False,
+            length=8,
+            values_callable=lambda e: [m.value for m in e],
+        )
+    )
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
 
@@ -88,6 +112,9 @@ class Check(Base):
     # The engine resolves a Content ID to a different infohash, so it is kept separately.
     infohash: Mapped[str | None] = mapped_column(String(40))
     screenshot_path: Mapped[str | None] = mapped_column(String(500))
+    # Frame size of the screenshot, when one was taken.
+    width: Mapped[int | None]
+    height: Mapped[int | None]
     error_message: Mapped[str | None] = mapped_column(String(500))
 
     channel: Mapped[Channel] = relationship(back_populates="checks")

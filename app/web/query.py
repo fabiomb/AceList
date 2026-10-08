@@ -1,10 +1,11 @@
 from starlette.datastructures import QueryParams
 
-from app.db.models import CheckStatus
+from app.db.models import CheckStatus, Resolution
 from app.services.iso import country_name, language_name
-from app.services.listing import DEFAULT_DESCENDING, UNCHECKED, ChannelQuery, SortKey
+from app.services.listing import DEFAULT_DESCENDING, UNCHECKED, UNKNOWN, ChannelQuery, SortKey
 
 STATUS_FILTERS = [*(s.value for s in CheckStatus), UNCHECKED]
+RESOLUTION_FILTERS = [*(r.value for r in Resolution), UNKNOWN]
 
 
 def parse_query(params: QueryParams) -> ChannelQuery:
@@ -14,6 +15,7 @@ def parse_query(params: QueryParams) -> ChannelQuery:
     language = params.get("language", "").strip().lower()
     country = params.get("country", "").strip().upper()
     status = params.get("status", "")
+    resolution = params.get("resolution", "").strip().lower()
     try:
         sort = SortKey(params.get("sort", ""))
     except ValueError:
@@ -25,6 +27,7 @@ def parse_query(params: QueryParams) -> ChannelQuery:
         language=language if language_name(language) else None,
         country=country if country_name(country) else None,
         status=status if status in STATUS_FILTERS else None,
+        resolution=resolution if resolution in RESOLUTION_FILTERS else None,
         sort=sort,
         descending=direction == "desc"
         if direction in ("asc", "desc")

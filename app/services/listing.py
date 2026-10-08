@@ -4,9 +4,10 @@ from enum import StrEnum
 from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.orm import Session, aliased
 
-from app.db.models import Channel, Check, CheckStatus
+from app.db.models import Channel, Check, CheckStatus, Resolution
 
 UNCHECKED = "unchecked"  # status filter: channels with no check yet
+UNKNOWN = "unknown"  # resolution filter: channels whose resolution is not known
 
 
 class SortKey(StrEnum):
@@ -38,6 +39,7 @@ class ChannelQuery:
     category_id: int | None = None
     language: str | None = None  # ISO 639-1
     country: str | None = None  # ISO 3166-1 alpha-2
+    resolution: str | None = None  # a `Resolution` value, or `UNKNOWN`
     status: str | None = None  # a `CheckStatus` value or `UNCHECKED`
     sort: SortKey = SortKey.TITLE
     descending: bool = False
@@ -74,6 +76,10 @@ def search_channels(session: Session, query: ChannelQuery) -> list[tuple[Channel
         stmt = stmt.where(Channel.language == query.language.lower())
     if query.country:
         stmt = stmt.where(Channel.country == query.country.upper())
+    if query.resolution == UNKNOWN:
+        stmt = stmt.where(Channel.resolution.is_(None))
+    elif query.resolution:
+        stmt = stmt.where(Channel.resolution == Resolution(query.resolution))
     if query.status == UNCHECKED:
         stmt = stmt.where(latest.id.is_(None))
     elif query.status:

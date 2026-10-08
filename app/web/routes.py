@@ -105,7 +105,16 @@ def channel_list(request: Request, session: SessionDep):
         ChannelRow(channel, check, _screenshot_url(request, check))
         for channel, check in listing.search_channels(session, query)
     ]
-    filtered = any((query.text, query.category_id, query.language, query.country, query.status))
+    filtered = any(
+        (
+            query.text,
+            query.category_id,
+            query.language,
+            query.country,
+            query.status,
+            query.resolution,
+        )
+    )
     return templates.TemplateResponse(
         request,
         "channels/list.html",
@@ -144,8 +153,9 @@ def channel_create(
     new_category: FormField = "",
     language: FormField = "",
     country: FormField = "",
+    resolution: FormField = "",
 ):
-    form = ChannelForm(title, link, category_id, new_category, language, country)
+    form = ChannelForm(title, link, category_id, new_category, language, country, resolution)
     data = form.validate(session)
     if data is None:
         return _render_form(request, session, form)
@@ -159,6 +169,7 @@ def channel_create(
             category_id=resolve_category(session, data.category_id, data.new_category),
             language=data.language,
             country=data.country,
+            resolution=data.resolution,
             settings=settings.verification(),
             capture=settings.capture(),
         )
@@ -270,9 +281,10 @@ def channel_update(
     new_category: FormField = "",
     language: FormField = "",
     country: FormField = "",
+    resolution: FormField = "",
 ):
     channel = _get_channel_or_404(session, channel_id)
-    form = ChannelForm(title, link, category_id, new_category, language, country)
+    form = ChannelForm(title, link, category_id, new_category, language, country, resolution)
     data = form.validate(session, channel_id=channel_id)
     if data is None:
         return _render_form(request, session, form, channel=channel)
@@ -287,6 +299,7 @@ def channel_update(
             category_id=resolve_category(session, data.category_id, data.new_category),
             language=data.language,
             country=data.country,
+            resolution=data.resolution,
             settings=settings.verification(),
             capture=settings.capture(),
         )

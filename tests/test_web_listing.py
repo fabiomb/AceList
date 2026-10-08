@@ -84,3 +84,17 @@ def test_no_match_is_not_the_empty_catalog(web, db):
     assert "Ningún canal coincide con estos filtros." in page
     assert "Todavía no hay canales" not in page
     assert 'value="nada"' in page
+
+
+def test_resolution_column_and_filter(web, db):
+    seed(db)
+    uno = channels.find_channel_by_content_id(db, HASH_A)
+    channels.update_channel(db, uno.id, resolution="4k")
+
+    page = web.get("/?resolution=4k").text
+
+    assert '<span class="resolution">4K</span>' in page
+    assert ">Uno<" in page and ">Dos<" not in page
+    assert '<option value="4k" selected>4K</option>' in page
+    assert ">Dos<" in web.get("/?resolution=unknown").text
+    assert ">Uno<" in web.get("/?resolution=bogus").text  # ignored

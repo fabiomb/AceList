@@ -249,3 +249,24 @@ def test_row_actions_are_icons_with_accessible_names(web, db):
 
     for action in ("Reproducir", "Editar", "Borrar"):
         assert f'aria-label="{action} Uno" title="{action}"' in page
+
+
+def test_resolution_can_be_chosen_on_add_and_edit(web, db, engine_down):
+    response = web.post("/channels/new", data=form(resolution="720p"), follow_redirects=False)
+    [channel] = channels.list_channels(db)
+    assert channel.resolution.value == "720p"
+
+    page = web.get(f"/channels/{channel.id}/edit").text
+    assert '<option value="720p" selected>720p</option>' in page
+
+    web.post(f"/channels/{channel.id}/edit", data=form(resolution=""))
+    db.expire_all()
+    assert channels.get_channel(db, channel.id).resolution is None
+    assert response.status_code == 303
+
+
+def test_unknown_resolution_is_rejected(web, db, engine_down):
+    response = web.post("/channels/new", data=form(resolution="8k"))
+
+    assert response.status_code == 422
+    assert "Resolución desconocida." in response.text

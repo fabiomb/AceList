@@ -10,6 +10,7 @@ from app.services import categories, channels
 from app.services.catalog import parse_link
 from app.services.errors import ValidationError
 from app.services.iso import normalize_country, normalize_language
+from app.services.resolution import normalize_resolution
 from app.services.settings import AppSettings
 
 
@@ -23,6 +24,7 @@ class ChannelData:
     new_category: str | None  # created on save; wins over `category_id`
     language: str | None
     country: str | None
+    resolution: str | None
 
 
 @dataclass
@@ -35,6 +37,7 @@ class ChannelForm:
     new_category: str = ""
     language: str = ""
     country: str = ""
+    resolution: str = ""
     errors: dict[str, str] = field(default_factory=dict)
 
     @classmethod
@@ -45,6 +48,7 @@ class ChannelForm:
             category_id=str(channel.category_id or ""),
             language=channel.language or "",
             country=channel.country or "",
+            resolution=channel.resolution.value if channel.resolution else "",
         )
 
     def validate(self, session: Session, *, channel_id: int | None = None) -> ChannelData | None:
@@ -89,9 +93,19 @@ class ChannelForm:
         except ValidationError:
             self.errors["country"] = "País desconocido: usa un código ISO 3166-1, como «AR»."
 
+        resolution = None
+        try:
+            chosen_resolution = normalize_resolution(self.resolution)
+        except ValidationError:
+            self.errors["resolution"] = "Resolución desconocida."
+        else:
+            resolution = chosen_resolution.value if chosen_resolution else None
+
         if self.errors:
             return None
-        return ChannelData(title, content_id, category_id, new_category, language, country)
+        return ChannelData(
+            title, content_id, category_id, new_category, language, country, resolution
+        )
 
 
 def resolve_category(

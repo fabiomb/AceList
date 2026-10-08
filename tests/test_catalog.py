@@ -5,7 +5,7 @@ import pytest
 
 from app.acestream.client import EngineClient
 from app.db.base import Base
-from app.db.models import CheckStatus
+from app.db.models import CheckStatus, Resolution
 from app.db.session import make_engine, make_session_factory
 from app.services import catalog, categories, channels, checks
 from app.services.errors import DuplicateError, NotFoundError, ValidationError
@@ -73,6 +73,7 @@ def shots(monkeypatch, tmp_path):
     class Shots:
         calls = []
         fail = False
+        content = b"jpg"  # not a real JPEG unless a test sets one
 
         def __call__(self, playback_url, content_id, *, data_dir, **options):
             self.calls.append((playback_url, content_id, data_dir))
@@ -82,7 +83,7 @@ def shots(monkeypatch, tmp_path):
             relative = f"screenshots/{content_id}_{len(self.calls)}.jpg"
             target = Path(data_dir) / relative
             target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(b"jpg")
+            target.write_bytes(self.content)
             return relative
 
     fake = Shots()
@@ -360,3 +361,29 @@ def test_a_new_hash_always_gets_a_new_screenshot(session, client, engine, shots,
 
     assert len(shots.calls) == 2
     assert shots.calls[1][1] == HASH_B
+
+
+# resolution
+
+
+def test_a_screenshot_records_its_size_and_the_channel_resolution(
+    session, client, engine, shots, tmp_path, make_jpeg
+):
+    shots.content = make_jpeg(1280, 720)
+
+    channel = add(session, client, tmp_path, resolution="4k")
+
+    check = checks.get_latest_check(session, channel.id)
+    assert (check.width, check.height) == (1280, 720)
+    # Detected from the stream, it replaces the value chosen by hand.
+    assert channels.get_channel(session, channel.id).resolution is Resolution.HD
+
+
+def test_without_a_readable_screenshot_the_resolution_is_kept(
+    session, client, engine, shots, tmp_path
+):
+    channel = add(session, client, tmp_path, resolution="1080p")
+
+    check = checks.get_latest_check(session, channel.id)
+    assert (check.width, check.height) == (None, None)
+    assert channels.get_channel(session, channel.id).resolution is Resolution.FULL_HD

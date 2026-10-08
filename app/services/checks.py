@@ -20,9 +20,11 @@ def add_check(
     infohash: str | None = None,
     screenshot_path: str | None = None,
     error_message: str | None = None,
+    width: int | None = None,
+    height: int | None = None,
     checked_at: datetime | None = None,
 ) -> Check:
-    """`screenshot_path` is relative to the data directory."""
+    """`screenshot_path` is relative to the data directory; width and height are its size."""
     get_channel(session, channel_id)
     check = Check(
         channel_id=channel_id,
@@ -32,6 +34,8 @@ def add_check(
         infohash=infohash,
         screenshot_path=screenshot_path,
         error_message=error_message,
+        width=width,
+        height=height,
     )
     if checked_at is not None:
         check.checked_at = checked_at
@@ -46,6 +50,7 @@ def record_verification(
     result: VerificationResult,
     *,
     screenshot_path: str | None = None,
+    frame: tuple[int, int] | None = None,
     checked_at: datetime | None = None,
 ) -> Check:
     """Stores a verification outcome as the newest entry of the channel's history."""
@@ -60,6 +65,8 @@ def record_verification(
         screenshot_path=screenshot_path,
         # Matches the column length so a long engine message cannot break the insert.
         error_message=message[:_MAX_MESSAGE] if message else None,
+        width=frame[0] if frame else None,
+        height=frame[1] if frame else None,
         checked_at=checked_at,
     )
 
