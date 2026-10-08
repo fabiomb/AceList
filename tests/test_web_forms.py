@@ -34,7 +34,7 @@ def test_new_form_lists_categories_languages_and_countries(web, db):
     assert '<option value="AR">Argentina (AR)</option>' in page
 
 
-def test_adding_stores_the_channel_and_its_first_check(web, db, engine_down):
+def test_adding_stores_the_channel_and_its_first_check(web, db, engine_empty):
     sports = categories.create_category(db, "Deportes")
 
     response = web.post(
@@ -54,8 +54,8 @@ def test_adding_stores_the_channel_and_its_first_check(web, db, engine_down):
     assert (channel.title, channel.content_id) == ("Canal Uno", HASH_A)
     assert (channel.category_id, channel.language, channel.country) == (sports.id, "es", "AR")
     [check] = checks.list_checks(db, channel.id)
-    assert check.status == CheckStatus.ERROR
-    assert engine_down.called
+    assert check.status == CheckStatus.NOT_FOUND
+    assert engine_empty.called
 
 
 def test_invalid_input_is_shown_again_with_errors_and_nothing_is_saved(web, db, engine_down):
@@ -144,7 +144,7 @@ def test_editing_other_fields_does_not_verify_again(web, db, engine_down):
     assert not engine_down.called
 
 
-def test_changing_the_hash_verifies_again(web, db, engine_down):
+def test_changing_the_hash_verifies_again(web, db, engine_empty):
     channel = channels.create_channel(db, title="Uno", content_id=HASH_A)
 
     web.post(f"/channels/{channel.id}/edit", data=form(title="Uno", link=HASH_B))
@@ -152,7 +152,7 @@ def test_changing_the_hash_verifies_again(web, db, engine_down):
     db.expire_all()
     assert channels.get_channel(db, channel.id).content_id == HASH_B
     assert len(checks.list_checks(db, channel.id)) == 1
-    assert engine_down.called
+    assert engine_empty.called
 
 
 def test_editing_keeps_its_own_hash_but_rejects_another_channels(web, db, engine_down):

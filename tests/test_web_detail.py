@@ -73,7 +73,7 @@ def test_list_links_titles_to_the_detail(web, db):
 
 
 def test_check_again_stores_a_new_check_and_returns_to_the_detail(
-    web, db, engine_down, wait_for_checks
+    web, db, engine_empty, wait_for_checks
 ):
     channel = channels.create_channel(db, title="Uno", content_id=HASH_A)
 
@@ -83,9 +83,9 @@ def test_check_again_stores_a_new_check_and_returns_to_the_detail(
     assert response.headers["location"] == f"http://127.0.0.1/channels/{channel.id}"
     wait_for_checks()
     [check] = checks.list_checks(db, channel.id)
-    assert check.status == CheckStatus.ERROR
-    assert engine_down.called
-    assert "Error" in web.get(f"/channels/{channel.id}").text
+    assert check.status == CheckStatus.NOT_FOUND
+    assert engine_empty.called
+    assert "No encontrado" in web.get(f"/channels/{channel.id}").text
 
 
 def test_missing_channel_is_404(web, engine_down):

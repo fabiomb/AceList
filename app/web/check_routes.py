@@ -2,9 +2,10 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session, sessionmaker
 
+from app.acestream.errors import EngineUnavailableError
 from app.db.models import CheckStatus
 from app.services import catalog, listing
-from app.services.batch import CheckRunner, CheckWork
+from app.services.batch import AbortBatch, CheckRunner, CheckWork
 from app.services.catalog import Screenshots
 from app.services.settings import AppSettings
 from app.web.deps import (
@@ -20,6 +21,8 @@ from app.web.templating import templates
 
 router = APIRouter(prefix="/checks")
 
+ENGINE_UNAVAILABLE = "engine_unavailable"  # why a batch stopped early
+
 
 def check_work(
     session_factory: sessionmaker[Session],
@@ -32,14 +35,18 @@ def check_work(
 
     def work(channel_id: int) -> CheckStatus:
         with session_factory() as session, engine_factory() as client:
-            check = catalog.check_channel(
-                session,
-                client,
-                channel_id,
-                settings=settings.verification(),
-                capture=settings.capture(),
-                screenshots=screenshots,
-            )
+            try:
+                check = catalog.check_channel(
+                    session,
+                    client,
+                    channel_id,
+                    settings=settings.verification(),
+                    capture=settings.capture(),
+                    screenshots=screenshots,
+                )
+            except EngineUnavailableError as exc:
+                # Every other channel would fail the same way, and none of them is to blame.
+                raise AbortBatch(ENGINE_UNAVAILABLE) from exc
             return check.status
 
     return work

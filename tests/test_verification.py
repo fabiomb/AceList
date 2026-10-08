@@ -6,6 +6,7 @@ import pytest
 
 from app.acestream.client import EngineClient
 from app.acestream.content_id import InvalidContentIdError
+from app.acestream.errors import EngineUnavailableError
 from app.db.models import CheckStatus
 from app.services.verification import (
     VerificationSettings,
@@ -221,13 +222,12 @@ def test_unknown_content_is_not_found_and_nothing_to_stop(client, clock, respx_m
     assert respx_mock.calls.call_count == 1
 
 
-def test_engine_down_is_an_error_result(client, clock, respx_mock):
+def test_engine_down_is_not_a_channel_result(client, clock, respx_mock):
+    # Unreachable engine: nothing is known about the channel, so no result (#62).
     respx_mock.get(f"{BASE}/ace/getstream").mock(side_effect=httpx.ConnectError("refused"))
 
-    result = run(client, clock)
-
-    assert result.status is CheckStatus.ERROR
-    assert "cannot reach the engine" in result.error_message
+    with pytest.raises(EngineUnavailableError):
+        run(client, clock)
 
 
 def test_engine_failure_while_polling_is_an_error_and_the_session_is_stopped(

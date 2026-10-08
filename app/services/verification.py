@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from app.acestream.client import EngineClient, StreamSession
 from app.acestream.content_id import parse_content_id
-from app.acestream.errors import ContentNotFoundError, EngineError
+from app.acestream.errors import ContentNotFoundError, EngineError, EngineUnavailableError
 from app.db.models import CheckStatus
 
 
@@ -82,6 +82,8 @@ def verify(
 
     A malformed Content ID raises `InvalidContentIdError`. Engine failures are
     returned as `ERROR` so a caller can store them; the session is stopped either way.
+    An engine that cannot be reached raises `EngineUnavailableError` instead: that says
+    nothing about the channel, so it must not be stored as the channel's result.
     `on_alive` runs while the session is still playing, which is the only moment a
     screenshot can be taken; exceptions it raises propagate.
     """
@@ -95,6 +97,8 @@ def verify(
             return result
     except ContentNotFoundError:
         return VerificationResult(CheckStatus.NOT_FOUND)
+    except EngineUnavailableError:
+        raise
     except EngineError as exc:
         return VerificationResult(CheckStatus.ERROR, error_message=str(exc))
 

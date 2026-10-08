@@ -4,6 +4,7 @@ import httpx
 import pytest
 
 from app.acestream.client import EngineClient
+from app.acestream.errors import EngineUnavailableError
 from app.db.base import Base
 from app.db.models import CheckStatus, Resolution
 from app.db.session import make_engine, make_session_factory
@@ -139,17 +140,26 @@ def test_unknown_content_is_saved_with_a_not_found_check(session, client, respx_
     assert checks.get_latest_check(session, channel.id).status is CheckStatus.NOT_FOUND
 
 
-def test_engine_down_still_saves_the_channel_with_an_error_check(
-    session, client, respx_mock, tmp_path
-):
+def test_engine_down_saves_the_channel_unchecked(session, client, respx_mock, tmp_path):
+    # An engine that is off says nothing about the channel (#62).
     respx_mock.get(f"{BASE}/ace/getstream").mock(side_effect=httpx.ConnectError("refused"))
 
     channel = add(session, client, tmp_path)
 
     assert channels.get_channel(session, channel.id).content_id == HASH_A
-    check = checks.get_latest_check(session, channel.id)
-    assert check.status is CheckStatus.ERROR
-    assert "cannot reach the engine" in check.error_message
+    assert checks.list_checks(session, channel.id) == []
+
+
+def test_check_channel_with_the_engine_down_raises_and_stores_nothing(
+    session, client, engine, shots, tmp_path, respx_mock
+):
+    channel = add(session, client, tmp_path)
+    respx_mock.get(f"{BASE}/ace/getstream").mock(side_effect=httpx.ConnectError("refused"))
+
+    with pytest.raises(EngineUnavailableError):
+        recheck(session, client, tmp_path, channel.id)
+
+    assert len(checks.list_checks(session, channel.id)) == 1
 
 
 def test_no_screenshot_is_attempted_when_the_channel_is_not_alive(
