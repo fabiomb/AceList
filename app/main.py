@@ -9,6 +9,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
+from app import __version__
 from app.config import DATA_DIR
 from app.db.session import make_engine, make_session_factory
 from app.services.batch import CheckRunner
@@ -84,7 +85,8 @@ app.include_router(engine_routes.router)
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok"}
+    # "app" lets the launcher tell AceList from another program on the same port.
+    return {"status": "ok", "app": "AceList", "version": __version__}
 
 
 def run() -> None:
