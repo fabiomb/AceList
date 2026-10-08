@@ -18,8 +18,8 @@ def test_bare_ids_and_links_in_any_case():
     entries, invalid = parsed(f"{HASH_A}\nacestream://{HASH_B.upper()}\n")
 
     assert entries == [
-        (1, HASH_A, f"Canal {HASH_A[:8]}"),
-        (2, HASH_B, f"Canal {HASH_B[:8]}"),
+        (1, HASH_A, None),
+        (2, HASH_B, None),
     ]
     assert invalid == []
 
@@ -49,7 +49,7 @@ def test_m3u_titles_apply_to_the_next_link():
     assert [(cid, title) for _, cid, title in entries] == [
         (HASH_A, "Deportes HD"),
         (HASH_B, "Noticias, edición noche"),
-        (HASH_C, f"Canal {HASH_C[:8]}"),
+        (HASH_C, None),
     ]
     assert invalid == []
 
@@ -114,3 +114,11 @@ def test_bad_shared_values_fail_before_creating_anything(db):
 def test_too_many_lines_are_refused(db):
     with pytest.raises(ValidationError, match="too many lines"):
         import_links(db, "\n".join([HASH_A] * (MAX_LINES + 1)))
+
+
+def test_untitled_lines_get_a_provisional_title(db):
+    result = import_links(db, f"{HASH_A}\nNombrado {HASH_B}")
+
+    untitled, titled = result.created
+    assert (untitled.title, untitled.title_pending) == (f"Canal {HASH_A[:8]}", True)
+    assert (titled.title, titled.title_pending) == ("Nombrado", False)

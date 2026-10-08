@@ -6,11 +6,13 @@ from sqlalchemy.orm import Session
 
 from app.acestream.client import EngineClient, StreamSession
 from app.acestream.content_id import InvalidContentIdError, parse_content_id
+from app.acestream.errors import EngineError
 from app.config import DATA_DIR
 from app.db.models import Channel, Check
 from app.services import channels
 from app.services.checks import record_verification
 from app.services.errors import DuplicateError, ValidationError
+from app.services.naming import clean_stream_name, placeholder_title
 from app.services.resolution import classify, frame_size
 from app.services.screenshots import CaptureSettings, ScreenshotError, capture_screenshot
 from app.services.verification import VerificationSettings, verify
@@ -45,6 +47,8 @@ def check_channel(
     """
     channel = channels.get_channel(session, channel_id)
     content_id = channel.content_id
+    if channel.title_pending:
+        _name_from_stream(session, client, channel)
     capture = capture or CaptureSettings()
     wants_screenshot = force_capture or not has_screenshot(session, channel_id)
     screenshot: str | None = None
@@ -76,6 +80,18 @@ def check_channel(
     return check
 
 
+def _name_from_stream(session: Session, client: EngineClient, channel: Channel) -> None:
+    """Replaces a provisional title with the content's published name, if the engine has it."""
+    try:
+        name = clean_stream_name(client.media_name(channel.content_id))
+    except EngineError as exc:
+        # The title stays provisional and the next check tries again.
+        log.warning("no stream name for %s: %s", channel.content_id, exc)
+        return
+    if name is not None:
+        channels.update_channel(session, channel.id, title=name)
+
+
 def has_screenshot(session: Session, channel_id: int) -> bool:
     return (
         session.scalar(
@@ -91,7 +107,7 @@ def add_channel(
     session: Session,
     client: EngineClient,
     *,
-    title: str,
+    title: str = "",
     link: str,
     category_id: int | None = None,
     language: str | None = None,
@@ -104,13 +120,16 @@ def add_channel(
     """Registers a channel from a Content ID or `acestream://` link and verifies it.
 
     The channel is saved before verifying, so an engine that is down leaves it stored
-    with an `error` check instead of losing what the user typed.
+    with an `error` check instead of losing what the user typed. Without a title it
+    gets the stream's name, or a provisional one until a check finds that name.
     """
     content_id = parse_link(link)
     _ensure_free(session, content_id)
+    pending = not title.strip()
     channel = channels.create_channel(
         session,
-        title=title,
+        title=placeholder_title(content_id) if pending else title,
+        title_pending=pending,
         content_id=content_id,
         category_id=category_id,
         language=language,

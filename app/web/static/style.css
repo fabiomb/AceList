@@ -404,3 +404,5 @@ form.inline { display: inline; }
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
+
+.channels .title a.pending-title { color: var(--muted); font-style: italic; }

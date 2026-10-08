@@ -130,7 +130,7 @@
           <span class="no-thumb" aria-label="Sin captura"></span>
           {% endif %}
         </td>
-        <td class="title"><a href="{{ url_for('channel_detail', channel_id=channel.id) }}">{{ channel.title }}</a></td>
+        <td class="title"><a href="{{ url_for('channel_detail', channel_id=channel.id) }}"{% if channel.title_pending %} class="pending-title" title="Nombre provisional: se completa con el del stream al verificar"{% endif %}>{{ channel.title }}</a></td>
         <td class="hash"><code title="{{ channel.content_id }}">{{ channel.content_id | short_hash }}</code>{{ copy_button(channel.content_id, "Copiar el hash de " ~ channel.title) }}</td>
         <td>{{ channel.category.name if channel.category else "—" }}</td>
         <td>

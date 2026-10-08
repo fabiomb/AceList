@@ -19,8 +19,9 @@
       hx-disabled-elt="find button[type=submit]">
   <div class="field">
     <label for="title">Título</label>
-    <input id="title" name="title" type="text" maxlength="200" required value="{{ form.title }}"{{ invalid("title") }}>
+    <input id="title" name="title" type="text" maxlength="200"{% if channel %} required{% endif %} value="{{ form.title }}"{{ invalid("title") }}>
     {{ field_error("title") }}
+    {% if not channel %}<p class="hint">Opcional: si lo dejas vacío, se usa el nombre con el que se publica el stream.</p>{% endif %}
   </div>
 
   <div class="field">

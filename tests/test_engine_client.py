@@ -289,3 +289,58 @@ def test_stream_does_not_stop_when_it_never_started(client, respx_mock):
         pytest.fail("block must not run")
 
     assert respx_mock.calls.call_count == 1
+
+
+# media_name (observed shape in docs/engine-api.md)
+
+MEDIA_FILES = {
+    "result": {
+        "files": [{"index": 0, "filename": "Sky Sports Main Event [UK]"}],
+        "name": "Sky Sports Main Event [UK]",
+        "infohash": HASH,
+        "transport_type": "bt",
+        "type": "live",
+    }
+}
+
+
+def test_media_name_without_starting_a_session(client, respx_mock):
+    route = respx_mock.get(f"{BASE}/server/api").respond(json=MEDIA_FILES)
+
+    assert client.media_name(f"acestream://{HASH.upper()}") == "Sky Sports Main Event [UK]"
+    params = route.calls.last.request.url.params
+    assert (params["method"], params["content_id"], params["api_version"]) == (
+        "get_media_files",
+        HASH,
+        "3",
+    )
+
+
+def test_media_name_falls_back_to_the_file_name(client, respx_mock):
+    respx_mock.get(f"{BASE}/server/api").respond(
+        json={"result": {"files": [{"index": 0, "filename": "Canal Uno"}]}}
+    )
+
+    assert client.media_name(HASH) == "Canal Uno"
+
+
+def test_media_name_of_unknown_content_is_none(client, respx_mock):
+    respx_mock.get(f"{BASE}/server/api").respond(
+        json={"error": {"message": "cannot get transport file", "code": 0}}
+    )
+
+    assert client.media_name(HASH) is None
+
+
+def test_media_name_with_an_unexpected_answer_is_a_protocol_error(client, respx_mock):
+    respx_mock.get(f"{BASE}/server/api").respond(json={"result": "nope"})
+
+    with pytest.raises(EngineProtocolError):
+        client.media_name(HASH)
+
+
+def test_media_name_rejects_a_bad_content_id_before_any_request(client, respx_mock):
+    with pytest.raises(InvalidContentIdError):
+        client.media_name("nope")
+
+    assert not respx_mock.calls
