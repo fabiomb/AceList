@@ -19,6 +19,7 @@
       <a href="{{ url_for('import_page') }}">Importar</a>
       <a href="{{ url_for('settings') }}">Ajustes</a>
     </nav>
+    {% include "_engine_status.html" %}
   </header>
   <main class="content">
     {# Results of in-page actions, such as opening a channel in VLC. #}
