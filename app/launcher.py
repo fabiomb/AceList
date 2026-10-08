@@ -122,9 +122,11 @@ def serve(port: int) -> None:  # pragma: no cover - runs the real server until C
 
 def main(argv: list[str] | None = None, *, server: Callable[[int], None] = serve) -> int:
     args = parse_args(argv)
-    if hasattr(sys.stdout, "reconfigure"):
-        # Show each message at once, also when the output goes to a file.
-        sys.stdout.reconfigure(line_buffering=True)
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            # UTF-8 and a line at a time, also when the output goes to a file or a pipe
+            # (the console already gets UTF-8; a pipe would get the ANSI code page).
+            stream.reconfigure(encoding="utf-8", line_buffering=True)
     set_console_title("AceList")
     print(f"AceList {__version__}")
     print(f"Datos: {DATA_DIR}")
