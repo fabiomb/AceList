@@ -100,6 +100,8 @@
   {# The batch actions come back to this same view. #}
   {% set batch_query = query_string ~ (("&" if query_string else "?") ~ "view=gallery" if view == "gallery" else "") %}
   <div class="list-actions">
+    {# A plain download: htmx must not swap the JSON into the page. #}
+    <a class="button" href="{{ url_for('channel_export') }}{{ query_string }}" hx-boost="false" download>Exportar</a>
     <form method="post" action="{{ url_for('checks_screenshots') }}{{ batch_query }}"
           hx-confirm="Regenerar las capturas de {{ listed }}: se verifica cada canal y se saca una captura nueva de los que estén activos. Tarda bastante más que una verificación normal (unos segundos extra por canal activo). ¿Continuar?">
       <button type="submit" class="button">Regenerar capturas</button>

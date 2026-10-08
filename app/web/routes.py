@@ -1,14 +1,16 @@
+import json
 from dataclasses import dataclass
 from typing import Annotated
 from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlalchemy.orm import Session
 
 from app.acestream.errors import ContentNotFoundError, EngineError
+from app.db.base import utcnow
 from app.db.models import Channel, Check
-from app.services import catalog, categories, channels, checks, listing, player
+from app.services import catalog, categories, channels, checks, exchange, listing, player
 from app.services.catalog import Screenshots
 from app.services.errors import NotFoundError, ServiceError
 from app.services.iso import country_name, language_name
@@ -180,6 +182,20 @@ def _gallery_sections(rows: list[ChannelRow]) -> list[GallerySection]:
     if None in by_category:
         sections.append(GallerySection("Sin categoría", by_category[None]))
     return sections
+
+
+@router.get("/export", name="channel_export")
+def channel_export(request: Request, session: SessionDep):
+    """The channels the list shows with the URL's filters, as an AceList export file."""
+    query = parse_query(request.query_params)
+    rows = [channel for channel, _ in listing.search_channels(session, query)]
+    stamp = utcnow().astimezone().strftime("%Y%m%d-%H%M")
+    body = json.dumps(exchange.export_channels(rows), ensure_ascii=False, indent=2)
+    return Response(
+        body,
+        media_type="application/json; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="acelist-{stamp}.json"'},
+    )
 
 
 @router.get("/gallery", response_class=HTMLResponse, name="channel_gallery")

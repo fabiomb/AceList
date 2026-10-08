@@ -2,7 +2,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db.models import Category, Channel
@@ -115,12 +114,7 @@ def resolve_category(
     """Category id to store, creating the new category unless one has that name already."""
     if new_category is None:
         return category_id
-    existing = session.scalars(
-        select(Category).where(func.lower(Category.name) == new_category.lower())
-    ).first()
-    if existing is not None:
-        return existing.id
-    return categories.create_category(session, new_category).id
+    return categories.find_or_create(session, new_category).id
 
 
 # (minimum, maximum) accepted for each number, in seconds or peers.

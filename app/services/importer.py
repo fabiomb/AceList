@@ -28,6 +28,7 @@ class Entry:
 
 class Reason(StrEnum):
     NO_LINK = "no_link"  # the line has no Content ID
+    INVALID = "invalid"  # an exported channel with data that does not validate
     REPEATED = "repeated"  # the same Content ID appeared on an earlier line
     EXISTING = "existing"  # the Content ID is already in the catalog
 
@@ -39,10 +40,12 @@ class Rejected:
     reason: Reason
     first_line: int | None = None  # for REPEATED
     existing: Channel | None = None  # for EXISTING
+    detail: str | None = None  # for INVALID: what was wrong
 
 
 @dataclass
 class ImportResult:
+    unit: str = "line"  # what `Rejected.line` counts: "line" of text or exported "channel"
     created: list[Channel] = field(default_factory=list)
     duplicates: list[Rejected] = field(default_factory=list)
     invalid: list[Rejected] = field(default_factory=list)

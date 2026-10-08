@@ -1,10 +1,10 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Form, Request
+from fastapi import APIRouter, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse
 
 from app.db.models import Category
-from app.services import categories, importer
+from app.services import categories, exchange, importer
 from app.services.catalog import Screenshots
 from app.services.errors import ServiceError, ValidationError
 from app.services.iso import normalize_country, normalize_language
@@ -23,6 +23,8 @@ from app.web.templating import templates
 router = APIRouter(prefix="/import")
 
 FormField = Annotated[str, Form()]
+
+MAX_UPLOAD_BYTES = 5 * 1024 * 1024
 
 
 def _render(
@@ -62,6 +64,7 @@ def import_run(
     new_category: FormField = "",
     language: FormField = "",
     country: FormField = "",
+    file: Annotated[UploadFile | None, File()] = None,
 ):
     values = {
         "links": links,
@@ -71,9 +74,15 @@ def import_run(
         "country": country,
     }
     errors = {}
-    if not links.strip():
-        errors["links"] = "Pega al menos un enlace o Content ID."
-    elif len(links.splitlines()) > importer.MAX_LINES:
+    # A chosen file wins over the pasted text.
+    text = links
+    if file is not None and file.filename:
+        text, file_error = _read_upload(file)
+        if file_error:
+            errors["file"] = file_error
+    if "file" not in errors and not text.strip():
+        errors["links"] = "Pega al menos un enlace o Content ID, o elige un archivo."
+    elif not exchange.is_export(text) and len(text.splitlines()) > importer.MAX_LINES:
         errors["links"] = f"Como máximo {importer.MAX_LINES} líneas por importación."
     chosen = int(category_id) if category_id.isdigit() else None
     if new_category.strip():
@@ -88,10 +97,12 @@ def import_run(
     if errors:
         return _render(request, session, values, errors=errors)
 
+    # An AceList export brings each channel's data; anything else is a list of links.
+    run_import = exchange.import_export if exchange.is_export(text) else importer.import_links
     try:
-        result = importer.import_links(
+        result = run_import(
             session,
-            links,
+            text,
             category_id=resolve_category(session, chosen, new_category.strip() or None),
             language=language,
             country=country,
@@ -115,3 +126,14 @@ def import_run(
     )
     # The form comes back empty, ready for the next list; the summary stays below.
     return _render(request, session, {}, result=result)
+
+
+def _read_upload(file: UploadFile) -> tuple[str, str | None]:
+    """The uploaded file as text, or an error in Spanish."""
+    data = file.file.read(MAX_UPLOAD_BYTES + 1)
+    if len(data) > MAX_UPLOAD_BYTES:
+        return "", f"El archivo supera los {MAX_UPLOAD_BYTES // (1024 * 1024)} MB."
+    try:
+        return data.decode("utf-8-sig"), None
+    except UnicodeDecodeError:
+        return "", "El archivo no es texto en UTF-8."

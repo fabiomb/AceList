@@ -3,7 +3,7 @@
 {# Reloading would lose the import summary. #}
 {% set reload_on_checks = false %}
 
-{% block title %}Importar enlaces · AceList{% endblock %}
+{% block title %}Importar canales · AceList{% endblock %}
 
 {% macro field_error(name) %}
   {% if errors[name] %}<p class="field-error" id="{{ name }}-error">{{ errors[name] }}</p>{% endif %}
@@ -12,15 +12,16 @@
 {% macro invalid(name) %}{% if errors[name] %} aria-invalid="true" aria-describedby="{{ name }}-error"{% endif %}{% endmacro %}
 
 {% block content %}
-<h1>Importar enlaces</h1>
+<h1>Importar canales</h1>
 
 {% if result %}
+{% set unit = "Línea" if result.unit == "line" else "Canal" %}
 <section class="card import-summary" aria-labelledby="summary-title">
   <h2 id="summary-title">Resultado</h2>
   <p>
     <strong>{{ result.created | length }}</strong> {{ "canal creado" if result.created | length == 1 else "canales creados" }},
     <strong>{{ result.duplicates | length }}</strong> {{ "duplicado" if result.duplicates | length == 1 else "duplicados" }} y
-    <strong>{{ result.invalid | length }}</strong> {{ "línea inválida" if result.invalid | length == 1 else "líneas inválidas" }}.
+    <strong>{{ result.invalid | length }}</strong> {{ ("línea inválida" if result.invalid | length == 1 else "líneas inválidas") if result.unit == "line" else ("canal inválido" if result.invalid | length == 1 else "canales inválidos") }}.
     {% if result.created and not engine_down %}Los canales nuevos se están verificando en segundo plano.{% endif %}
   </p>
   {% if engine_down %}
@@ -41,19 +42,20 @@
   <ul class="import-list">
     {% for item in result.duplicates %}
     <li>
-      Línea {{ item.line }}: <code>{{ item.text | short_hash }}</code> —
+      {{ unit }} {{ item.line }}: <code>{{ item.text | short_hash }}</code> —
       {% if item.reason == "existing" %}ya está en el catálogo como <a href="{{ url_for('channel_detail', channel_id=item.existing.id) }}">{{ item.existing.title }}</a>.
-      {% else %}repite la línea {{ item.first_line }}.{% endif %}
+      {% else %}repite {{ "la línea" if result.unit == "line" else "el canal" }} {{ item.first_line }}.{% endif %}
     </li>
     {% endfor %}
   </ul>
   {% endif %}
 
   {% if result.invalid %}
-  <h3>Líneas inválidas</h3>
+  <h3>{{ "Líneas inválidas" if result.unit == "line" else "Canales inválidos" }} (no se crearon)</h3>
   <ul class="import-list">
     {% for item in result.invalid %}
-    <li>Línea {{ item.line }}: <code class="wrap">{{ item.text | truncate(120) }}</code> — no contiene un Content ID ni un enlace <code>acestream://</code>.</li>
+    <li>{{ unit }} {{ item.line }}: <code class="wrap">{{ item.text | truncate(120) }}</code> —
+      {% if item.reason == "invalid" %}datos inválidos: {{ item.detail }}.{% else %}no contiene un Content ID ni un enlace <code>acestream://</code>.{% endif %}</li>
     {% endfor %}
   </ul>
   {% endif %}
@@ -62,10 +64,21 @@
 
 {% if errors %}<p class="form-error" role="alert">Revisa los campos marcados.</p>{% endif %}
 
-<form class="card form" method="post" action="{{ url_for('import_run') }}" hx-disabled-elt="find button[type=submit]">
+<form class="card form" method="post" action="{{ url_for('import_run') }}" enctype="multipart/form-data" hx-disabled-elt="find button[type=submit]">
   <div class="field">
-    <label for="links">Enlaces</label>
-    <textarea id="links" name="links" rows="12" spellcheck="false" required
+    <label for="file">Archivo</label>
+    <input id="file" name="file" type="file" accept=".json,.m3u,.m3u8,.txt,application/json,text/plain"{{ invalid("file") }}>
+    {{ field_error("file") }}
+    <p class="hint">
+      Un archivo exportado desde AceList (<code>.json</code>) trae todos los datos de cada canal: título,
+      categoría, idioma, país y resolución. También una lista <code>.m3u</code> o <code>.txt</code>.
+      Si eliges un archivo, se usa en lugar del texto pegado.
+    </p>
+  </div>
+
+  <div class="field">
+    <label for="links">o pega los enlaces</label>
+    <textarea id="links" name="links" rows="10" spellcheck="false"
               placeholder="acestream://… o un Content ID por línea"{{ invalid("links") }}>{{ values.links }}</textarea>
     {{ field_error("links") }}
     <p class="hint">
@@ -75,7 +88,7 @@
     </p>
   </div>
 
-  <p class="hint">Para todos los canales importados (opcional):</p>
+  <p class="hint">Para todos los canales importados (opcional; en un archivo de AceList solo completan lo que le falte a cada canal):</p>
   <div class="field-row">
     <div class="field">
       <label for="category_id">Categoría</label>
