@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "acelist"
-version = "1.0.0"
+version = "1.1.0"
 description = "Local catalog of Acestream links with availability checks"
 readme = "README.md"
 requires-python = ">=3.11"

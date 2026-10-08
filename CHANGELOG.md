@@ -4,19 +4,25 @@ Todos los cambios relevantes del proyecto se registran aquí. Formato basado en 
 
 ## [Sin publicar]
 
+## [1.1.0] - 2026-10-08
+
+Galería, resolución y nombre de los canales, y un listado más compacto.
+
+Al actualizar hay que aplicar las migraciones `0002` y `0003` (`start.bat` lo hace al arrancar; a mano, `alembic upgrade head`). Los canales existentes quedan con resolución "Sin detectar" hasta que se regeneran sus capturas.
+
 ### Agregado
 - Gallery view (#58): `/gallery` shows the channels as a Netflix-like grid, one section per category (A-Z, uncategorized last). Each tile has the newest screenshot (or the title's initials), a status badge, a play button on hover, the title below and tags for resolution, category, language and country. It uses the same URL filters as the list, with an "Ordenar por" select, and a Lista/Galería switch keeps the filters; batch checks started from the gallery come back to it.
-
-### Corregido
-- List thumbnails no longer vanish after a check (#57): the list shows each channel's newest screenshot, which is usually older than its latest check, instead of only the latest check's. Checking ("Verificar") now only tests availability and peers and never takes screenshots; they come from "Regenerar capturas" / "Nueva captura", and from the first check of a channel added or imported without one. No screenshot was ever deleted.
+- Channel resolution (#49): channels have a resolution (480p, 720p, 1080p, 4K or Other) that is detected from each screenshot, by reading the JPEG header with no extra tools, and can also be set by hand; a detection replaces a hand-picked value. Checks store the exact frame size, shown in the detail history. The list shows the resolution and filters by it (including "Sin detectar"). Migration `0002` adds the columns.
+- Names from the stream (#50): a channel added or imported without a title takes the name the content is published with (`EngineClient.media_name()`, the engine's `get_media_files`, which needs no stream session), without the ad URLs those names often carry. If the engine does not know it yet, the channel keeps a provisional title (shown in italics) that the next check completes. A title someone wrote is never replaced. Migration `0003` adds `channel.title_pending`; `docs/engine-api.md` documents the spike.
+- Regenerate screenshots (#48): "Regenerar capturas" in the list (for the filtered channels) and "Nueva captura" in the detail check again and take a new screenshot of every live channel, after a confirmation that warns it takes longer. Changing a channel's Content ID always takes a new one.
+- Copy hash button (#47): next to the Content ID in the list and the detail, a button copies the full hash to the clipboard and confirms it with a check mark (and a screen reader announcement). `static/app.js` holds the small script, with a fallback for browsers without the clipboard API.
 
 ### Cambiado
 - Compact channel list (#45): the creation date column is gone (sorting by it still works through the URL) and the last check shows as relative time ("hace 3 h", the date after a month) with the full date on hover, under a shorter "Verificado" header.
 - Icon actions (#46): play, edit and delete in each list row are now inline SVG icons (`_icons.html`) with accessible names and tooltips.
-- Copy hash button (#47): next to the Content ID in the list and the detail, a button copies the full hash to the clipboard and confirms it with a check mark (and a screen reader announcement). `static/app.js` holds the small script, with a fallback for browsers without the clipboard API.
-- Regenerate screenshots (#48): checks now take a screenshot only when the channel has none yet, so routine checks are faster; changing a channel's Content ID always takes a new one. "Regenerar capturas" in the list (for the filtered channels) and "Nueva captura" in the detail check again forcing a new screenshot of every live channel, after a confirmation that warns it takes longer.
-- Channel resolution (#49): channels have a resolution (480p, 720p, 1080p, 4K or Other) that is detected from each screenshot, by reading the JPEG header with no extra tools, and can also be set by hand; a detection replaces a hand-picked value. Checks store the exact frame size, shown in the detail history. The list shows the resolution and filters by it (including "Sin detectar"). Migration `0002` adds the columns.
-- Names from the stream (#50): a channel added or imported without a title takes the name the content is published with (`EngineClient.media_name()`, the engine's `get_media_files`, which needs no stream session), without the ad URLs those names often carry. If the engine does not know it yet, the channel keeps a provisional title (shown in italics) that the next check completes. A title someone wrote is never replaced. Migration `0003` adds `channel.title_pending`; `docs/engine-api.md` documents the spike.
+
+### Corregido
+- List thumbnails no longer vanish after a check (#57): the list shows each channel's newest screenshot, which is usually older than its latest check, instead of only the latest check's. Checking ("Verificar") now only tests availability and peers and never takes screenshots; they come from "Regenerar capturas" / "Nueva captura", and from the first check of a channel added or imported without one. No screenshot was ever deleted.
 
 ## [1.0.0] - 2026-10-07
 
@@ -50,5 +56,6 @@ Primera versión completa: catálogo, verificación, interfaz web, reproducción
 - Integration tests (#21): `tests/test_integration.py` drives the web app end to end against an engine simulated over HTTP, with a different behavior per Content ID: alive (with a real `capture_screenshot` run on a fake ffmpeg), no peers, unknown hash, engine down, timeout, engine dropping mid-check, unexpected answers, missing ffmpeg, a mixed bulk import and a link that dies. CI now measures coverage with `pytest-cov` and fails below 95% (99% when set). Tests run with their own temporary data directory.
 - Usage documentation and Windows launcher (#22): the README covers requirements, installation, use, channel states, settings, security and troubleshooting. `start.bat` / `start.ps1` create the virtual environment on first run (reinstalling only when `pyproject.toml` changes), apply the migrations, start the server and open the browser once it answers (`-Port`, `-NoBrowser`); if AceList is already running they only open the browser. The server port is configurable with `ACELIST_PORT`.
 
-[Sin publicar]: https://github.com/fabiomb/AceList/compare/v1.0.0...HEAD
+[Sin publicar]: https://github.com/fabiomb/AceList/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/fabiomb/AceList/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/fabiomb/AceList/releases/tag/v1.0.0
