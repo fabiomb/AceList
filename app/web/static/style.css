@@ -532,3 +532,22 @@ form.inline { display: inline; }
 .tag-resolution { color: var(--text); font-weight: 700; }
 .batch.aborted { border-left-color: var(--bad-fg); }
 .batch.aborted .hint { margin-top: 6px; }
+
+/* Ace Stream indicator */
+.engine-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.engine-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--none-fg); }
+.engine-status.up .engine-dot { background: var(--alive-fg); }
+.engine-status.down { color: var(--bad-fg); border-color: var(--bad-fg); }
+.engine-status.down .engine-dot { background: var(--bad-fg); }

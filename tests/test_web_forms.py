@@ -299,4 +299,4 @@ def test_editing_other_fields_never_asks_the_engine(web, db, engine_down):
     response = web.post(f"/channels/{channel.id}/edit", data=form(title="Dos"))
 
     assert not engine_down.called
-    assert "Ace Stream" not in response.text
+    assert "Ace Stream no responde" not in response.text
