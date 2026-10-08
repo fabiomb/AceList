@@ -4,16 +4,22 @@ Todos los cambios relevantes del proyecto se registran aquí. Formato basado en 
 
 ## [Sin publicar]
 
+## [1.2.0] - 2026-10-08
+
+Exportación e importación del catálogo, y AceList ahora sabe si Ace Stream está abierto: lo muestra, puede iniciarlo y no culpa a los canales cuando está apagado.
+
+Sin migraciones nuevas: basta con actualizar y arrancar. Si los estilos se ven raros la primera vez, una recarga forzada (Ctrl+F5) descarta la hoja de estilos vieja; a partir de esta versión ya no hace falta.
+
 ### Agregado
-- Engine pre-check (#63): "Verificar", "Regenerar capturas", "Nueva captura", adding, importing and changing a link first ask the engine for its version. If it does not answer, no check starts and the page says "Ace Stream no está abierto o no responde"; added, imported or edited channels are saved and left unchecked. Notices that follow a redirect are one-shot (`app/web/flash.py`).
+- Export and import (#72): "Exportar" in the list and the gallery downloads the channels shown (with the current filters; all without them) as an AceList JSON file with each channel's stored data: title, provisional-title flag, Content ID, category, language, country, resolution and date added. The import page now also takes a file: an AceList export is imported with all its data, creating missing categories and keeping the original dates, while a `.m3u` or `.txt` file works like pasted links. Channels already in the catalog or repeated in the file are skipped and listed, a channel with invalid data is reported without stopping the rest, and only the new ones are added and checked in the background. Check history and screenshots are not exported.
 - Ace Stream indicator (#64): the top bar of every page shows whether the engine answers ("Ace Stream 3.1.74" in green, "Ace Stream apagado" in red, the configured URL on hover). It is loaded by htmx after the page and refreshed every 30 s, so an engine that is off never slows a page down.
 - Start Ace Stream (#65): when the engine is off and `ace_engine.exe` is found (the "Engine de Ace Stream" setting, or the usual install folders), the indicator offers "Iniciar". It launches the engine detached and without a shell, waits up to 30 s for it to answer and shows the result, or says why it could not.
+- Engine pre-check (#63): "Verificar", "Regenerar capturas", "Nueva captura", adding, importing and changing a link first ask the engine for its version. If it does not answer, no check starts and the page says "Ace Stream no está abierto o no responde"; added, imported or edited channels are saved and left unchecked. Notices that follow a redirect are one-shot (`app/web/flash.py`).
 - Check one channel from the list (#70): a button next to each status badge checks just that channel in the background and comes back to the same list, with its filters and order, which reloads with the new state when done.
-- Export and import (#72): "Exportar" in the list and the gallery downloads the channels shown (with the current filters; all without them) as an AceList JSON file with each channel's stored data: title, provisional-title flag, Content ID, category, language, country, resolution and date added. The import page now also takes a file: an AceList export is imported with all its data, creating missing categories and keeping the original dates, while a `.m3u` or `.txt` file works like pasted links. Channels already in the catalog or repeated in the file are skipped and listed, a channel with invalid data is reported without stopping the rest, and only the new ones are added and checked in the background. Check history and screenshots are not exported.
 
 ### Corregido
-- New styles and scripts now reach the browser right away: their URLs carry a hash of the file's content (`style.css?v=…`), so a browser can no longer keep an old stylesheet from its cache, which left "Iniciar" and "Iniciando…" showing together.
 - An engine that is off is no longer blamed on the channels (#62): when Ace Stream cannot be reached, no `error` check is stored. A background batch stops at the first such failure and says so ("Verificación interrumpida: Ace Stream no responde"), dropping the queued checks, and adding, importing or changing a link with the engine off saves the channel unchecked. Timeouts and other engine errors are still recorded as `error`.
+- New styles and scripts now reach the browser right away: their URLs carry a hash of the file's content (`style.css?v=…`), so a browser can no longer keep an old stylesheet from its cache, which left "Iniciar" and "Iniciando…" showing together.
 
 ## [1.1.0] - 2026-10-08
 
@@ -67,6 +73,7 @@ Primera versión completa: catálogo, verificación, interfaz web, reproducción
 - Integration tests (#21): `tests/test_integration.py` drives the web app end to end against an engine simulated over HTTP, with a different behavior per Content ID: alive (with a real `capture_screenshot` run on a fake ffmpeg), no peers, unknown hash, engine down, timeout, engine dropping mid-check, unexpected answers, missing ffmpeg, a mixed bulk import and a link that dies. CI now measures coverage with `pytest-cov` and fails below 95% (99% when set). Tests run with their own temporary data directory.
 - Usage documentation and Windows launcher (#22): the README covers requirements, installation, use, channel states, settings, security and troubleshooting. `start.bat` / `start.ps1` create the virtual environment on first run (reinstalling only when `pyproject.toml` changes), apply the migrations, start the server and open the browser once it answers (`-Port`, `-NoBrowser`); if AceList is already running they only open the browser. The server port is configurable with `ACELIST_PORT`.
 
-[Sin publicar]: https://github.com/fabiomb/AceList/compare/v1.1.0...HEAD
+[Sin publicar]: https://github.com/fabiomb/AceList/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/fabiomb/AceList/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/fabiomb/AceList/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/fabiomb/AceList/releases/tag/v1.0.0
