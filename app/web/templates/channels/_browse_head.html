@@ -21,20 +21,6 @@
 </section>
 {% else %}
 <form class="filters" method="get" action="{{ view_url }}" role="search">
-  {% if view == "gallery" %}
-  {# No column headers here: the order is picked from a list, in its natural direction. #}
-  <div class="field">
-    <label for="f-sort">Ordenar por</label>
-    <select id="f-sort" name="sort">
-      {% for key, label in [("title", "Título"), ("status", "Estado"), ("peers", "Peers"), ("checked", "Última verificación"), ("created", "Alta")] %}
-      <option value="{{ key }}"{% if query.sort.value == key %} selected{% endif %}>{{ label }}</option>
-      {% endfor %}
-    </select>
-  </div>
-  {% else %}
-  <input type="hidden" name="sort" value="{{ query.sort.value }}">
-  <input type="hidden" name="dir" value="{{ 'desc' if query.descending else 'asc' }}">
-  {% endif %}
   <div class="field field-search">
     <label for="q">Buscar</label>
     <input id="q" name="q" type="search" placeholder="Título o Content ID" value="{{ query.text or '' }}">
@@ -86,6 +72,21 @@
       <option value="unknown"{% if query.resolution == "unknown" %} selected{% endif %}>Sin detectar</option>
     </select>
   </div>
+  {% if view == "gallery" %}
+  {# Last, so both views list the shared filters in the same order. No column headers
+     here: the order is picked from a list, in its natural direction. #}
+  <div class="field">
+    <label for="f-sort">Ordenar por</label>
+    <select id="f-sort" name="sort">
+      {% for key, label in [("title", "Título"), ("status", "Estado"), ("peers", "Peers"), ("checked", "Última verificación"), ("created", "Alta")] %}
+      <option value="{{ key }}"{% if query.sort.value == key %} selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  {% else %}
+  <input type="hidden" name="sort" value="{{ query.sort.value }}">
+  <input type="hidden" name="dir" value="{{ 'desc' if query.descending else 'asc' }}">
+  {% endif %}
   <div class="filter-actions">
     <button type="submit" class="button">Filtrar</button>
     {% if filtered %}<a href="{{ view_url }}">Quitar filtros</a>{% endif %}

@@ -117,3 +117,17 @@ def test_batch_actions_from_the_gallery_come_back_to_it(web, catalog, engine_dow
 
     assert response.headers["location"] == "http://127.0.0.1/gallery?q=uno"
     assert app.state.check_runner.current().total == 1
+
+
+def filter_labels(page):
+    """Labels of the filter bar, in page order."""
+    form = page[page.index('<form class="filters"') : page.index("</form>")]
+    return re.findall(r'<label for="[^"]+">([^<]+)</label>', form)
+
+
+def test_both_views_list_the_filters_in_the_same_order(web, catalog):
+    shared = ["Buscar", "Categoría", "Idioma", "País", "Estado", "Resolución"]
+
+    assert filter_labels(web.get("/").text) == shared
+    # The gallery adds its order select after them, since it has no column headers.
+    assert filter_labels(web.get("/gallery").text) == [*shared, "Ordenar por"]
