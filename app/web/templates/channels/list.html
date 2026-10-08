@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 
 {% block title %}Canales · AceList{% endblock %}
 
@@ -134,10 +135,10 @@
           <form class="inline" method="post" action="{{ url_for('channel_play', channel_id=channel.id) }}"
                 hx-post="{{ url_for('channel_play', channel_id=channel.id) }}" hx-target="#notices" hx-swap="innerHTML"
                 hx-disabled-elt="find button">
-            <button type="submit" class="link-button">Reproducir</button>
+            <button type="submit" class="icon-button" aria-label="Reproducir {{ channel.title }}" title="Reproducir">{{ icon("play") }}</button>
           </form>
-          <a href="{{ url_for('channel_edit', channel_id=channel.id) }}">Editar</a>
-          <a class="danger-link" href="{{ url_for('channel_delete', channel_id=channel.id) }}">Borrar</a>
+          <a class="icon-button" href="{{ url_for('channel_edit', channel_id=channel.id) }}" aria-label="Editar {{ channel.title }}" title="Editar">{{ icon("edit") }}</a>
+          <a class="icon-button danger" href="{{ url_for('channel_delete', channel_id=channel.id) }}" aria-label="Borrar {{ channel.title }}" title="Borrar">{{ icon("delete") }}</a>
         </td>
       </tr>
       {% endfor %}

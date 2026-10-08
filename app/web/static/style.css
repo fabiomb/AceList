@@ -180,7 +180,6 @@ abbr { text-decoration: none; cursor: help; }
 .button:disabled { opacity: 0.6; cursor: progress; }
 
 .row-actions { text-align: right; }
-.row-actions a { margin-left: 12px; text-decoration: none; }
 .danger-link { color: var(--bad-fg); }
 
 .card {
@@ -361,3 +360,27 @@ form.inline { display: inline; }
 .import-summary h3 { font-size: 15px; margin: 16px 0 6px; }
 .import-list { margin: 0; padding-left: 20px; }
 .import-list li { margin: 2px 0; }
+
+.icon { display: block; }
+
+.icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.icon-button:hover,
+.icon-button:focus-visible { color: var(--accent); background: var(--bg); border-color: var(--border); }
+.icon-button.danger:hover,
+.icon-button.danger:focus-visible { color: var(--bad-fg); }
+.icon-button:disabled { opacity: 0.6; cursor: progress; }
+.row-actions { white-space: nowrap; }
+.row-actions .icon-button { margin-left: 2px; }

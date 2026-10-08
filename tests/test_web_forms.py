@@ -240,3 +240,13 @@ def test_writes_from_the_app_itself_are_accepted(web, db):
     )
 
     assert response.status_code == 303
+
+
+def test_row_actions_are_icons_with_accessible_names(web, db):
+    channels.create_channel(db, title="Uno", content_id=HASH_A)
+
+    page = web.get("/").text
+
+    for action in ("Reproducir", "Editar", "Borrar"):
+        assert f'aria-label="{action} Uno" title="{action}"' in page
+    assert page.count('<svg class="icon"') == 3
