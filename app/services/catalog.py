@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.acestream.client import EngineClient, StreamSession
 from app.acestream.content_id import InvalidContentIdError, parse_content_id
-from app.acestream.errors import EngineError
+from app.acestream.errors import EngineError, EngineUnavailableError
 from app.config import DATA_DIR
 from app.db.models import Channel, Check
 from app.services import channels
@@ -51,7 +51,8 @@ def check_channel(
 
     By default only availability and peers are checked; `screenshots` decides whether a
     live channel also gets a screenshot, which adds seconds per channel.
-    Never raises for engine or screenshot problems: they end up in the stored check.
+    Engine and screenshot problems end up in the stored check, except an engine that
+    cannot be reached: then `EngineUnavailableError` propagates and nothing is stored.
     Blocks while the engine is polled, so call it from a worker thread.
     """
     channel = channels.get_channel(session, channel_id)
@@ -131,7 +132,7 @@ def add_channel(
     """Registers a channel from a Content ID or `acestream://` link and verifies it.
 
     The channel is saved before verifying, so an engine that is down leaves it stored
-    with an `error` check instead of losing what the user typed. Without a title it
+    and unchecked instead of losing what the user typed. Without a title it
     gets the stream's name, or a provisional one until a check finds that name.
     """
     content_id = parse_link(link)
@@ -147,15 +148,19 @@ def add_channel(
         country=country,
         resolution=resolution,
     )
-    check_channel(
-        session,
-        client,
-        channel.id,
-        settings=settings,
-        capture=capture,
-        screenshots=Screenshots.IF_MISSING,
-        data_dir=data_dir,
-    )
+    try:
+        check_channel(
+            session,
+            client,
+            channel.id,
+            settings=settings,
+            capture=capture,
+            screenshots=Screenshots.IF_MISSING,
+            data_dir=data_dir,
+        )
+    except EngineUnavailableError as exc:
+        # Kept unchecked: the engine being off says nothing about the channel.
+        log.warning("engine unavailable, %s saved unchecked: %s", content_id, exc)
     return channel
 
 
@@ -187,15 +192,18 @@ def edit_channel(
     if hash_changed:
         # History is kept: it is how the user sees that the old link died. The new
         # link is another stream, so the old screenshots no longer show it.
-        check_channel(
-            session,
-            client,
-            channel_id,
-            settings=settings,
-            capture=capture,
-            screenshots=Screenshots.ALWAYS,
-            data_dir=data_dir,
-        )
+        try:
+            check_channel(
+                session,
+                client,
+                channel_id,
+                settings=settings,
+                capture=capture,
+                screenshots=Screenshots.ALWAYS,
+                data_dir=data_dir,
+            )
+        except EngineUnavailableError as exc:
+            log.warning("engine unavailable, %s left unchecked: %s", new_content_id, exc)
     return channel
 
 

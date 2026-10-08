@@ -172,14 +172,12 @@ def test_unknown_hash(web, db, engine, ffmpeg):
     assert "No encontrado" in web.get("/").text
 
 
-def test_engine_down_still_saves_the_channel(web, db, engine_down):
+def test_engine_down_saves_the_channel_unchecked(web, db, engine_down):
     add(web, ALIVE, "Sin engine")
 
-    check = latest(db, ALIVE)
-    assert check.status is CheckStatus.ERROR
-    assert "engine.test" in check.error_message
+    assert latest(db, ALIVE) is None
     page = web.get("/").text
-    assert "Sin engine" in page and "status-error" in page
+    assert "Sin engine" in page and "status-unchecked" in page and "status-error" not in page
 
 
 def test_engine_timeout(web, db, engine):
@@ -190,11 +188,10 @@ def test_engine_timeout(web, db, engine):
     assert "did not answer in time" in check.error_message
 
 
-def test_engine_dropping_mid_check_is_an_error_and_cleans_up(web, db, engine):
+def test_engine_dropping_mid_check_stores_nothing_and_cleans_up(web, db, engine):
     add(web, DIES, "Se cae")
 
-    check = latest(db, DIES)
-    assert check.status is CheckStatus.ERROR
+    assert latest(db, DIES) is None
     assert engine.stopped == [DIES[:8]]
 
 

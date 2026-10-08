@@ -14,6 +14,15 @@ log = logging.getLogger(__name__)
 
 FAILED = "failed"  # the check itself crashed, so nothing was stored
 
+
+class AbortBatch(Exception):
+    """Raised by a check when the rest of the batch cannot succeed either."""
+
+    def __init__(self, reason: str):
+        super().__init__(reason)
+        self.reason = reason
+
+
 # Verifies one channel and returns the stored status. Runs in a worker thread.
 CheckWork = Callable[[int], CheckStatus]
 
@@ -28,6 +37,7 @@ class Batch:
     done: int = 0
     counts: Counter = field(default_factory=Counter)  # status value or FAILED -> channels
     finished_at: datetime | None = None
+    aborted: str | None = None  # the `AbortBatch` reason that stopped it early
     pending: set[int] = field(default_factory=set)
     finished_event: threading.Event = field(default_factory=threading.Event, repr=False)
 
@@ -87,12 +97,17 @@ class CheckRunner:
     def _run(self, batch: Batch, channel_id: int, work: CheckWork) -> None:
         try:
             outcome = CheckStatus(work(channel_id)).value
+        except AbortBatch as exc:
+            self._abort(batch, channel_id, exc.reason)
+            return
         except Exception:
             # One broken check must not stop the batch.
             log.exception("check of channel %s failed", channel_id)
             outcome = FAILED
         with self._lock:
             batch.pending.discard(channel_id)
+            if batch.aborted is not None:
+                return  # a check that was already running when the batch stopped
             batch.done += 1
             batch.counts[outcome] += 1
             if batch.done == batch.total:
@@ -100,3 +115,17 @@ class CheckRunner:
                 if self._batch is batch and self._executor is not None:
                     self._executor.shutdown(wait=False)
                 batch.finished_event.set()
+
+    def _abort(self, batch: Batch, channel_id: int, reason: str) -> None:
+        with self._lock:
+            batch.pending.discard(channel_id)
+            if batch.finished:
+                return
+            log.warning("checks stopped after %s of %s: %s", batch.done, batch.total, reason)
+            batch.aborted = reason
+            batch.finished_at = utcnow()
+            batch.pending.clear()
+            if self._batch is batch and self._executor is not None:
+                # Queued checks would fail the same way: drop them.
+                self._executor.shutdown(wait=False, cancel_futures=True)
+            batch.finished_event.set()

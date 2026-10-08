@@ -530,3 +530,5 @@ form.inline { display: inline; }
 }
 
 .tag-resolution { color: var(--text); font-weight: 700; }
+.batch.aborted { border-left-color: var(--bad-fg); }
+.batch.aborted .hint { margin-top: 6px; }

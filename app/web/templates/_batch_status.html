@@ -12,6 +12,16 @@
   </div>
   {% include "_batch_counts.html" %}
 </div>
+{% elif batch.aborted %}
+<div id="batch-status" class="batch aborted" role="alert">
+  <div class="batch-line">
+    <strong>Verificación interrumpida: Ace Stream no responde.</strong>
+    <button type="button" class="link-button" hx-post="{{ url_for('checks_dismiss') }}"
+            hx-target="#batch-status" hx-swap="outerHTML">Cerrar</button>
+  </div>
+  <p class="hint">Se verificaron {{ batch.done }} de {{ batch.total }} canales; el resto quedó como estaba. Abre Ace Stream y vuelve a verificar.</p>
+  {% include "_batch_counts.html" %}
+</div>
 {% else %}
 <div id="batch-status" class="batch finished" role="status">
   <div class="batch-line">

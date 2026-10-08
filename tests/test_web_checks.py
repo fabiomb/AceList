@@ -43,7 +43,7 @@ def test_list_offers_to_check_what_it_shows(web, two):
 
 
 def test_checking_the_filtered_list_checks_only_those_channels(
-    web, db, two, engine_down, wait_for_checks
+    web, db, two, engine_empty, wait_for_checks
 ):
     uno, dos = two
 
@@ -52,10 +52,10 @@ def test_checking_the_filtered_list_checks_only_those_channels(
     assert response.status_code == 303
     assert response.headers["location"] == "http://127.0.0.1/?q=uno"
     wait_for_checks()
-    assert [c.status for c in checks.list_checks(db, uno.id)] == [CheckStatus.ERROR]
+    assert [c.status for c in checks.list_checks(db, uno.id)] == [CheckStatus.NOT_FOUND]
     assert checks.list_checks(db, dos.id) == []
     batch = app.state.check_runner.current()
-    assert (batch.total, batch.counts["error"]) == (1, 1)
+    assert (batch.total, batch.counts["not_found"]) == (1, 1)
 
 
 def test_nothing_matching_starts_nothing(web, two):
@@ -193,3 +193,20 @@ def test_import_takes_screenshots_only_of_new_channels(
     wait_for_checks()
 
     assert modes == [Screenshots.IF_MISSING]
+
+
+def test_a_batch_that_loses_the_engine_stops_and_blames_no_channel(
+    web, db, two, engine_down, wait_for_checks
+):
+    # #62: an engine that is off says nothing about the channels.
+    web.post("/checks")
+    wait_for_checks()
+
+    batch = app.state.check_runner.current()
+    assert batch.aborted == check_routes.ENGINE_UNAVAILABLE
+    assert batch.done == 0
+    assert all(checks.list_checks(db, channel.id) == [] for channel in two)
+    page = web.get("/").text
+    assert "Verificación interrumpida" in page
+    assert "Ace Stream no responde" in page
+    assert "status-error" not in page

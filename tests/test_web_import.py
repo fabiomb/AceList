@@ -21,7 +21,7 @@ def test_import_page_and_nav_link(web):
 
 
 def test_import_creates_reports_and_verifies_in_the_background(
-    web, db, engine_down, wait_for_checks
+    web, db, engine_empty, wait_for_checks
 ):
     existing = channels.create_channel(db, title="<Viejo>", content_id=HASH_A)
 
@@ -49,7 +49,7 @@ def test_import_creates_reports_and_verifies_in_the_background(
     new = channels.find_channel_by_content_id(db, HASH_B)
     assert new.language == "es"
     assert new.category.name == "Deportes"
-    assert [c.status for c in checks.list_checks(db, new.id)] == [CheckStatus.ERROR]
+    assert [c.status for c in checks.list_checks(db, new.id)] == [CheckStatus.NOT_FOUND]
     assert checks.list_checks(db, existing.id) == []
 
 

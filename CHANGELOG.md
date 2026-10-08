@@ -4,6 +4,9 @@ Todos los cambios relevantes del proyecto se registran aquí. Formato basado en 
 
 ## [Sin publicar]
 
+### Corregido
+- An engine that is off is no longer blamed on the channels (#62): when Ace Stream cannot be reached, no `error` check is stored. A background batch stops at the first such failure and says so ("Verificación interrumpida: Ace Stream no responde"), dropping the queued checks, and adding, importing or changing a link with the engine off saves the channel unchecked. Timeouts and other engine errors are still recorded as `error`.
+
 ## [1.1.0] - 2026-10-08
 
 Galería, resolución y nombre de los canales, y un listado más compacto.

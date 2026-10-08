@@ -49,7 +49,7 @@ def web(db_factory):
 
 @pytest.fixture
 def engine_down(web, respx_mock):
-    """The web app's engine, unreachable: saving still works and stores an `error` check."""
+    """The web app's engine, unreachable: channels are saved but never checked."""
     base = "http://engine.test"
 
     app.dependency_overrides[get_engine_factory] = lambda: lambda: EngineClient(base, timeout=1)
@@ -86,3 +86,16 @@ def _jpeg(width: int, height: int, *, sof: int = 0xC0, extra_segments: bool = Tr
 def make_jpeg():
     """Builds JPEG headers by hand, so tests need no image library and no ffmpeg."""
     return _jpeg
+
+
+@pytest.fixture
+def engine_empty(web, respx_mock):
+    """The web app's engine, running but unable to load anything: every check is `not_found`."""
+    base = "http://engine-empty.test"
+    app.dependency_overrides[get_engine_factory] = lambda: lambda: EngineClient(base, timeout=1)
+    respx_mock.get(f"{base}/server/api").respond(
+        json={"error": {"message": "cannot get transport file", "code": 0}}
+    )
+    return respx_mock.get(f"{base}/ace/getstream").respond(
+        json={"response": None, "error": "failed to load content"}
+    )
