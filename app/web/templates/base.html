@@ -6,6 +6,7 @@
   {# 422 is a rejected form and 503 a missing player or engine: htmx must show them. #}
   <meta name="htmx-config" content='{"responseHandling": [{"code": "204", "swap": false}, {"code": "[23]..", "swap": true}, {"code": "422", "swap": true}, {"code": "503", "swap": true}, {"code": "[45]..", "swap": false, "error": true}]}'>
   <title>{% block title %}AceList{% endblock %}</title>
+  <link rel="icon" href="{{ static_url(request, 'favicon.ico') }}">
   <link rel="stylesheet" href="{{ static_url(request, 'style.css') }}">
   <script src="{{ static_url(request, 'htmx.min.js') }}" defer></script>
   <script src="{{ static_url(request, 'app.js') }}" defer></script>
