@@ -65,7 +65,6 @@ def test_invalid_input_is_shown_again_with_errors_and_nothing_is_saved(web, db, 
 
     assert response.status_code == 422
     page = response.text
-    assert "El título es obligatorio." in page
     assert "No es un Content ID válido" in page
     assert "Idioma desconocido" in page
     assert "País desconocido" in page

@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import StrEnum
 
-from sqlalchemy import CheckConstraint, Enum, ForeignKey, Index, String
+from sqlalchemy import CheckConstraint, Enum, ForeignKey, Index, String, false
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, UTCDateTime, utcnow
@@ -57,6 +57,8 @@ class Channel(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str] = mapped_column(String(200))
+    # The user gave no title: this one is provisional until the stream's name is known.
+    title_pending: Mapped[bool] = mapped_column(default=False, server_default=false())
     content_id: Mapped[str] = mapped_column(String(40), unique=True)
     # RESTRICT: a category in use cannot be deleted without reassigning its channels.
     category_id: Mapped[int | None] = mapped_column(

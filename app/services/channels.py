@@ -34,8 +34,12 @@ def create_channel(
     language: str | None = None,
     country: str | None = None,
     resolution: str | None = None,
+    title_pending: bool = False,
 ) -> Channel:
-    """`content_id` must already be normalized (40 lowercase hex characters)."""
+    """`content_id` must already be normalized (40 lowercase hex characters).
+
+    `title_pending` marks a provisional title, replaced once the stream's name is known.
+    """
     check_category(session, category_id)
     channel = Channel(
         title=_clean_title(title),
@@ -44,6 +48,7 @@ def create_channel(
         language=normalize_language(language),
         country=normalize_country(country),
         resolution=normalize_resolution(resolution),
+        title_pending=title_pending,
     )
     session.add(channel)
     _commit_unique(session, content_id)
@@ -73,6 +78,9 @@ def update_channel(session: Session, channel_id: int, **changes) -> Channel:
     channel = get_channel(session, channel_id)
     if "title" in changes:
         changes["title"] = _clean_title(changes["title"])
+        if changes["title"] != channel.title:
+            # A title someone chose is final: the stream's name will not replace it.
+            channel.title_pending = False
     if "category_id" in changes:
         check_category(session, changes["category_id"])
     if "language" in changes:

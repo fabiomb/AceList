@@ -38,6 +38,14 @@ class SimulatedEngine:
         respx_mock.get(f"{ENGINE}/ace/getstream").mock(side_effect=self._getstream)
         respx_mock.get(url__startswith=f"{ENGINE}/ace/stat/").mock(side_effect=self._stat)
         respx_mock.get(url__startswith=f"{ENGINE}/ace/cmd/").mock(side_effect=self._stop)
+        respx_mock.get(f"{ENGINE}/server/api").mock(side_effect=self._media_files)
+
+    def _media_files(self, request):
+        content_id = request.url.params["content_id"]
+        if content_id == NOT_FOUND:
+            return httpx.Response(200, json={"error": {"message": "cannot get transport file"}})
+        name = f"Stream {content_id[:4]} https://ads.example/x"
+        return httpx.Response(200, json={"result": {"name": name, "files": []}})
 
     def _getstream(self, request):
         content_id = request.url.params["id"]
@@ -253,3 +261,29 @@ def test_history_records_a_channel_that_dies(web, db, engine, ffmpeg, wait_for_c
     assert history == [CheckStatus.NOT_FOUND, CheckStatus.ALIVE]
     detail = web.get(f"/channels/{channel.id}").text
     assert "No encontrado" in detail and "Activo" in detail
+
+
+def test_untitled_channel_is_named_from_the_stream(web, db, engine, ffmpeg):
+    add(web, ALIVE, "")
+
+    channel = channels.find_channel_by_content_id(db, ALIVE)
+    assert (channel.title, channel.title_pending) == ("Stream 1111", False)
+    assert ">Stream 1111<" in web.get("/").text
+
+
+def test_imported_untitled_links_get_their_names_in_the_background(
+    web, db, engine, ffmpeg, wait_for_checks
+):
+    web.post("/import", data={"links": f"{NO_PEERS}\nPropio {ALIVE}\n{NOT_FOUND}"})
+    wait_for_checks()
+
+    titles = {
+        cid: channels.find_channel_by_content_id(db, cid).title
+        for cid in (NO_PEERS, ALIVE, NOT_FOUND)
+    }
+    assert titles == {
+        NO_PEERS: "Stream 2222",
+        ALIVE: "Propio",
+        NOT_FOUND: f"Canal {NOT_FOUND[:8]}",
+    }
+    assert channels.find_channel_by_content_id(db, NOT_FOUND).title_pending

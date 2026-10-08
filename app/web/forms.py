@@ -58,7 +58,8 @@ class ChannelForm:
         """
         self.errors = {}
         title = self.title.strip()
-        if not title:
+        # A new channel may go untitled: it takes the stream's name.
+        if not title and channel_id is not None:
             self.errors["title"] = "El título es obligatorio."
 
         content_id = ""

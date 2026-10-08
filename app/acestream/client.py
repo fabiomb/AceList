@@ -88,6 +88,28 @@ class EngineClient:
             return False
         return True
 
+    def media_name(self, content_id: str) -> str | None:
+        """Name the content is published with, without starting a session.
+
+        None when the engine cannot load the content (it answers after a few seconds).
+        Raises `EngineError` if the engine cannot be reached or answers nonsense.
+        """
+        content_id = parse_content_id(content_id)
+        data = self._get_json(
+            urljoin(self._base_url, "server/api"),
+            {"api_version": "3", "method": "get_media_files", "content_id": content_id},
+        )
+        if data.get("error"):
+            return None
+        result = data.get("result")
+        if not isinstance(result, dict):
+            raise EngineProtocolError("unexpected get_media_files response")
+        name = result.get("name")
+        if not name:
+            files = result.get("files") or []
+            name = files[0].get("filename") if files and isinstance(files[0], dict) else None
+        return str(name) if name else None
+
     def start_stream(self, content_id: str) -> StreamSession:
         """Raises `InvalidContentIdError` before any request if the Content ID is malformed."""
         content_id = parse_content_id(content_id)

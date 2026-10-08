@@ -8,6 +8,7 @@ from app.db.models import Channel
 from app.services import channels
 from app.services.errors import ValidationError
 from app.services.iso import normalize_country, normalize_language
+from app.services.naming import placeholder_title
 
 MAX_LINES = 2000
 _TITLE_LENGTH = 200  # the column length
@@ -22,7 +23,7 @@ _SEPARATORS = " \t-|,;:"
 class Entry:
     line: int  # 1-based, as the user sees it
     content_id: str
-    title: str
+    title: str | None  # None: take the stream's name
 
 
 class Reason(StrEnum):
@@ -50,7 +51,8 @@ class ImportResult:
 def parse_links(text: str) -> tuple[list[Entry], list[Rejected]]:
     """Reads one link per line; `#EXTINF` lines of an M3U list name the link below them.
 
-    Other `#` lines and blank lines are ignored. Text around the link becomes the title.
+    Other `#` lines and blank lines are ignored. Text around the link becomes the title;
+    without any, the title is None and the stream's name is used later.
     """
     entries: list[Entry] = []
     invalid: list[Rejected] = []
@@ -71,8 +73,8 @@ def parse_links(text: str) -> tuple[list[Entry], list[Rejected]]:
             continue
         content_id = match.group(1).lower()
         around = (line[: match.start()] + " " + line[match.end() :]).strip(_SEPARATORS)
-        title = pending_title or around or f"Canal {content_id[:8]}"
-        entries.append(Entry(number, content_id, title[:_TITLE_LENGTH]))
+        title = pending_title or around or None
+        entries.append(Entry(number, content_id, title[:_TITLE_LENGTH] if title else None))
         pending_title = None
     return entries, invalid
 
@@ -118,7 +120,8 @@ def import_links(
         result.created.append(
             channels.create_channel(
                 session,
-                title=entry.title,
+                title=entry.title or placeholder_title(entry.content_id),
+                title_pending=entry.title is None,
                 content_id=entry.content_id,
                 category_id=category_id,
                 language=language,

@@ -387,3 +387,77 @@ def test_without_a_readable_screenshot_the_resolution_is_kept(
     check = checks.get_latest_check(session, channel.id)
     assert (check.width, check.height) == (None, None)
     assert channels.get_channel(session, channel.id).resolution is Resolution.FULL_HD
+
+
+# names from the stream
+
+
+def media_files(respx_mock, **answer):
+    return respx_mock.get(f"{BASE}/server/api").respond(json=answer)
+
+
+def test_an_untitled_channel_takes_the_stream_name(
+    session, client, engine, shots, tmp_path, respx_mock
+):
+    media_files(respx_mock, result={"name": "DAZN 1 1080 https://t.me/ads"})
+
+    channel = add(session, client, tmp_path, title="  ")
+
+    stored = channels.get_channel(session, channel.id)
+    assert (stored.title, stored.title_pending) == ("DAZN 1 1080", False)
+
+
+def test_without_a_stream_name_the_title_stays_provisional_until_a_later_check(
+    session, client, engine, shots, tmp_path, respx_mock
+):
+    route = media_files(respx_mock, error={"message": "cannot get transport file"})
+    channel = add(session, client, tmp_path, title="")
+    stored = channels.get_channel(session, channel.id)
+    assert (stored.title, stored.title_pending) == (f"Canal {HASH_A[:8]}", True)
+
+    route.respond(json={"result": {"name": "Canal Real"}})
+    recheck(session, client, tmp_path, channel.id)
+
+    stored = channels.get_channel(session, channel.id)
+    assert (stored.title, stored.title_pending) == ("Canal Real", False)
+
+
+def test_engine_down_while_naming_keeps_the_provisional_title(
+    session, client, engine, shots, tmp_path, respx_mock
+):
+    respx_mock.get(f"{BASE}/server/api").mock(side_effect=httpx.ConnectError("refused"))
+
+    channel = add(session, client, tmp_path, title="")
+
+    stored = channels.get_channel(session, channel.id)
+    assert stored.title_pending
+    # The check itself still ran.
+    assert checks.get_latest_check(session, channel.id).status is CheckStatus.ALIVE
+
+
+def test_a_title_the_user_wrote_is_never_replaced(
+    session, client, engine, shots, tmp_path, respx_mock
+):
+    route = media_files(respx_mock, result={"name": "Stream"})
+
+    channel = add(session, client, tmp_path, title="Mío")
+    recheck(session, client, tmp_path, channel.id)
+
+    assert channels.get_channel(session, channel.id).title == "Mío"
+    assert not route.called
+
+
+def test_renaming_a_provisional_title_makes_it_final(
+    session, client, engine, shots, tmp_path, respx_mock
+):
+    route = media_files(respx_mock, error={"message": "cannot get transport file"})
+    channel = add(session, client, tmp_path, title="")
+
+    channels.update_channel(session, channel.id, title=f"Canal {HASH_A[:8]}")  # unchanged
+    assert channels.get_channel(session, channel.id).title_pending
+    channels.update_channel(session, channel.id, title="Elegido")
+    route.respond(json={"result": {"name": "Stream"}})
+    recheck(session, client, tmp_path, channel.id)
+
+    stored = channels.get_channel(session, channel.id)
+    assert (stored.title, stored.title_pending) == ("Elegido", False)

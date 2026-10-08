@@ -14,6 +14,8 @@ Todo lo de este documento fue observado en un engine real, salvo lo marcado como
 | ¿Hay seeds? | No. Solo existe `peers`. |
 | ¿Cómo capturo una imagen? | `ffmpeg -i <playback_url> -frames:v 1` funciona (3 s, JPEG 1920x1080). |
 | ¿Cómo libero la sesión? | `GET <command_url>?method=stop`. |
+| ¿Cómo sé el nombre del canal? | `GET /server/api?api_version=3&method=get_media_files&content_id=<id>`, sin abrir sesión (spike de #50). |
+| ¿Y su resolución? | Del tamaño del JPEG capturado; ffprobe da el mismo `width`/`height` (#49). |
 
 ## Endpoints
 
@@ -96,6 +98,35 @@ Devuelve `{"response": "ok", "error": null}`. Se hizo siempre al final de cada p
 `playback_url` responde **HTTP 302** con `Location: http://127.0.0.1:6878/content/<infohash>/<token>`. El servidor es `BaseHTTP/0.3 Python/2.7.13`.
 
 Al leer el cuerpo de la redirección con `httpx` la lectura quedó colgada hasta el timeout. No hace falta leerlo: para VLC y ffmpeg basta con pasar la `playback_url`, porque siguen la redirección.
+
+### Nombre del contenido
+
+Spike de #50, mismo engine 3.1.74:
+
+```
+GET /server/api?api_version=3&method=get_media_files&content_id=<content_id>
+```
+
+```json
+{
+  "result": {
+    "files": [{"index": 0, "filename": "Sky Sports Main Event [UK]"}],
+    "name": "Sky Sports Main Event [UK]",
+    "infohash": "78266c15035d0ad8cbc58f821733931e1de434ab",
+    "transport_type": "bt",
+    "type": "live",
+    "transport_file_cache_key": null
+  }
+}
+```
+
+- **No abre una sesión de stream** y no necesita token (con `token` de `get_api_access_token` responde igual).
+- Funciona también con canales sin peers. Responde en milisegundos si el engine ya conoce el contenido.
+- Contenido inexistente: `{"error": {"message": "cannot get transport file", "code": 0}}` tras ~4,7 s.
+- `name` es el nombre con el que se publicó el contenido y puede traer propaganda, por ejemplo `"DAZN 1 1080 elcano.top https://x.com/... https://t.me/..."`. AceList quita las URLs.
+- `get_content_info` no existe (`"unknown method"`). Ni `getstream` ni `stat` traen el nombre.
+
+Alternativa observada, solo con el canal en `dl`: ffprobe sobre la `playback_url` muestra el `service_name` del flujo MPEG-TS (`"SKY SPORTS MAIN EVENT HD United Kingdom"`, o `"TNT Sports 1 HD United Kingdom"` para un contenido publicado como `"BT Sport 1 [UK]"`) y el tamaño del video (1920x1080). No se usa: exige el canal vivo y otro proceso, y `get_media_files` alcanza.
 
 ## Resultados con los hashes de referencia
 
