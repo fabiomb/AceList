@@ -148,3 +148,11 @@ def test_sort_by_status_puts_live_channels_first(db, catalog):
 def test_used_languages_and_countries(db, catalog):
     assert sorted(used_languages(db)) == ["en", "es"]
     assert sorted(used_countries(db)) == ["AR", "ES", "GB"]
+
+
+def test_filters_by_resolution(db, catalog):
+    channels.update_channel(db, catalog["alfa"].id, resolution="1080p")
+    channels.update_channel(db, catalog["beta"].id, resolution="720p")
+
+    assert titles(db, resolution="1080p") == ["alfa deportes"]
+    assert titles(db, resolution="unknown") == ["Delta", "Gamma 100%_real"]

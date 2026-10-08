@@ -1,4 +1,5 @@
 import os
+import struct
 import tempfile
 
 # Set before the app is imported: a test that forgets to simulate the engine must fail,
@@ -65,3 +66,23 @@ def wait_for_checks(web):
         assert batch.finished_event.wait(timeout), "background checks did not finish"
 
     return wait
+
+
+def _jpeg(width: int, height: int, *, sof: int = 0xC0, extra_segments: bool = True) -> bytes:
+    """SOI, optional APP0 and DHT segments, a SOF with the size, and EOI."""
+    parts = [b"\xff\xd8"]
+    if extra_segments:
+        app0 = b"JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00"
+        parts.append(b"\xff\xe0" + struct.pack(">H", len(app0) + 2) + app0)
+        dht = b"\x00" + b"\x00" * 16  # an empty Huffman table
+        parts.append(b"\xff\xc4" + struct.pack(">H", len(dht) + 2) + dht)
+    body = struct.pack(">BHHB", 8, height, width, 3) + b"\x01\x22\x00\x02\x11\x01\x03\x11\x01"
+    parts.append(bytes([0xFF, sof]) + struct.pack(">H", len(body) + 2) + body)
+    parts.append(b"\xff\xd9")
+    return b"".join(parts)
+
+
+@pytest.fixture
+def make_jpeg():
+    """Builds JPEG headers by hand, so tests need no image library and no ffmpeg."""
+    return _jpeg

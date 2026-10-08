@@ -394,3 +394,13 @@ form.inline { display: inline; }
 .copy-button.copied .when-copied { display: block; }
 
 .list-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.resolution {
+  display: inline-block;
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}

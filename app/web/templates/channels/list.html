@@ -67,6 +67,16 @@
       <option value="unchecked"{% if query.status == "unchecked" %} selected{% endif %}>Sin verificar</option>
     </select>
   </div>
+  <div class="field">
+    <label for="f-resolution">Resolución</label>
+    <select id="f-resolution" name="resolution">
+      <option value="">Todas</option>
+      {% for value, label in resolution_labels.items() %}
+      <option value="{{ value.value }}"{% if query.resolution == value.value %} selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+      <option value="unknown"{% if query.resolution == "unknown" %} selected{% endif %}>Sin detectar</option>
+    </select>
+  </div>
   <div class="filter-actions">
     <button type="submit" class="button">Filtrar</button>
     {% if filtered %}<a href="{{ url_for('channel_list') }}">Quitar filtros</a>{% endif %}
@@ -101,6 +111,7 @@
         <th scope="col">Categoría</th>
         <th scope="col">Idioma</th>
         <th scope="col">País</th>
+        <th scope="col">Res.</th>
         {{ sort_header("status", "Estado") }}
         {{ sort_header("peers", "Peers", "num") }}
         {{ sort_header("checked", "Verificado") }}
@@ -128,6 +139,7 @@
         <td>
           {% if channel.country %}<abbr title="{{ country_name(channel.country) }}">{{ channel.country }}</abbr>{% else %}—{% endif %}
         </td>
+        <td>{% if channel.resolution %}<span class="resolution">{{ resolution_labels[channel.resolution] }}</span>{% else %}—{% endif %}</td>
         <td>
           {% if check %}
           <span class="status status-{{ check.status.value }}"{% if check.error_message %} title="{{ check.error_message }}"{% endif %}>{{ status_labels[check.status] }}</span>

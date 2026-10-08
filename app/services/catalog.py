@@ -11,6 +11,7 @@ from app.db.models import Channel, Check
 from app.services import channels
 from app.services.checks import record_verification
 from app.services.errors import DuplicateError, ValidationError
+from app.services.resolution import classify, frame_size
 from app.services.screenshots import CaptureSettings, ScreenshotError, capture_screenshot
 from app.services.verification import VerificationSettings, verify
 
@@ -65,7 +66,14 @@ def check_channel(
     result = verify(
         client, content_id, settings, on_alive=take_screenshot if wants_screenshot else None
     )
-    return record_verification(session, channel_id, result, screenshot_path=screenshot)
+    frame = frame_size(data_dir / screenshot) if screenshot else None
+    check = record_verification(
+        session, channel_id, result, screenshot_path=screenshot, frame=frame
+    )
+    if frame is not None:
+        # The stream is the authority: a detected resolution replaces one set by hand.
+        channels.update_channel(session, channel_id, resolution=classify(*frame).value)
+    return check
 
 
 def has_screenshot(session: Session, channel_id: int) -> bool:
@@ -88,6 +96,7 @@ def add_channel(
     category_id: int | None = None,
     language: str | None = None,
     country: str | None = None,
+    resolution: str | None = None,
     settings: VerificationSettings | None = None,
     capture: CaptureSettings | None = None,
     data_dir: Path = DATA_DIR,
@@ -106,6 +115,7 @@ def add_channel(
         category_id=category_id,
         language=language,
         country=country,
+        resolution=resolution,
     )
     check_channel(
         session, client, channel.id, settings=settings, capture=capture, data_dir=data_dir
@@ -126,7 +136,7 @@ def edit_channel(
 ) -> Channel:
     """Updates a channel; a new Content ID is verified again, other edits are not.
 
-    `changes` accepts `title`, `category_id`, `language` and `country`.
+    `changes` accepts `title`, `category_id`, `language`, `country` and `resolution`.
     """
     if "content_id" in changes:
         raise ValidationError("change the Content ID through `link` so it is validated")

@@ -69,6 +69,17 @@
       </select>
       {{ field_error("country") }}
     </div>
+    <div class="field">
+      <label for="resolution">Resolución</label>
+      <select id="resolution" name="resolution"{{ invalid("resolution") }}>
+        <option value="">Sin detectar</option>
+        {% for value, label in resolution_labels.items() %}
+        <option value="{{ value.value }}"{% if form.resolution == value.value %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      {{ field_error("resolution") }}
+      <p class="hint">Se detecta sola con cada captura y reemplaza la elegida.</p>
+    </div>
   </div>
 
   <div class="actions">

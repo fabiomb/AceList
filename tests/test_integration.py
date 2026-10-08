@@ -85,8 +85,8 @@ def engine(web, db, respx_mock):
 
 
 @pytest.fixture
-def ffmpeg(monkeypatch, tmp_path):
-    """Real `capture_screenshot`, with a fake ffmpeg process and files under `tmp_path`."""
+def ffmpeg(monkeypatch, make_jpeg):
+    """Real `capture_screenshot`, with a fake ffmpeg process (files go to the test data dir)."""
 
     class Ffmpeg:
         present = True
@@ -95,7 +95,7 @@ def ffmpeg(monkeypatch, tmp_path):
     def fake_run(command, **kwargs):
         Ffmpeg.commands.append(command)
         with open(command[-1], "wb") as frame:
-            frame.write(b"\xff\xd8jpeg")
+            frame.write(make_jpeg(1920, 1080))
         return subprocess.CompletedProcess(command, 0, "", "")
 
     def capture(playback_url, content_id, *, data_dir, **options):
@@ -105,7 +105,7 @@ def ffmpeg(monkeypatch, tmp_path):
         else:
             options["ffmpeg_path"] = "ffmpeg"
         return screenshots.capture_screenshot(
-            playback_url, content_id, data_dir=tmp_path, runner=fake_run, **options
+            playback_url, content_id, data_dir=data_dir, runner=fake_run, **options
         )
 
     monkeypatch.setattr(catalog, "capture_screenshot", capture)
@@ -134,12 +134,15 @@ def test_alive_channel_flows_from_the_form_to_the_list(web, db, engine, ffmpeg):
     assert check.status is CheckStatus.ALIVE
     assert (check.peers, check.speed_down, check.infohash) == (7, 950, ALIVE[::-1])
     assert check.screenshot_path.startswith(f"screenshots/{ALIVE}_")
+    assert (check.width, check.height) == (1920, 1080)
+    assert channels.find_channel_by_content_id(db, ALIVE).resolution.value == "1080p"
     # ffmpeg read the engine's playback URL, and the session was stopped afterwards.
     assert ffmpeg.commands[0][ffmpeg.commands[0].index("-i") + 1].startswith(f"{ENGINE}/ace/r/")
     assert engine.stopped == [ALIVE[:8]]
 
     page = web.get("/").text
     assert "status-alive" in page and ">7<" in page
+    assert '<span class="resolution">1080p</span>' in page
     assert f'src="/screenshots/{check.screenshot_path.split("/")[1]}"' in page
 
 

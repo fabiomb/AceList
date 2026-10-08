@@ -8,8 +8,9 @@ from app.config import DATA_DIR
 from app.db.models import Category, Channel
 from app.services.errors import DuplicateError, NotFoundError, ValidationError
 from app.services.iso import normalize_country, normalize_language
+from app.services.resolution import normalize_resolution
 
-_UPDATABLE = {"title", "content_id", "category_id", "language", "country"}
+_UPDATABLE = {"title", "content_id", "category_id", "language", "country", "resolution"}
 
 
 def _clean_title(title: str) -> str:
@@ -32,6 +33,7 @@ def create_channel(
     category_id: int | None = None,
     language: str | None = None,
     country: str | None = None,
+    resolution: str | None = None,
 ) -> Channel:
     """`content_id` must already be normalized (40 lowercase hex characters)."""
     check_category(session, category_id)
@@ -41,6 +43,7 @@ def create_channel(
         category_id=category_id,
         language=normalize_language(language),
         country=normalize_country(country),
+        resolution=normalize_resolution(resolution),
     )
     session.add(channel)
     _commit_unique(session, content_id)
@@ -76,6 +79,8 @@ def update_channel(session: Session, channel_id: int, **changes) -> Channel:
         changes["language"] = normalize_language(changes["language"])
     if "country" in changes:
         changes["country"] = normalize_country(changes["country"])
+    if "resolution" in changes:
+        changes["resolution"] = normalize_resolution(changes["resolution"])
     for field, value in changes.items():
         setattr(channel, field, value)
     _commit_unique(session, changes.get("content_id", channel.content_id))

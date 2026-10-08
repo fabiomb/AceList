@@ -4,11 +4,19 @@ from pathlib import Path
 from fastapi.templating import Jinja2Templates
 
 from app.db.base import utcnow
-from app.db.models import CheckStatus
+from app.db.models import CheckStatus, Resolution
 from app.services.iso import country_choices, country_name, language_choices, language_name
 
 WEB_DIR = Path(__file__).resolve().parent
 STATIC_DIR = WEB_DIR / "static"
+
+RESOLUTION_LABELS = {
+    Resolution.SD: "480p",
+    Resolution.HD: "720p",
+    Resolution.FULL_HD: "1080p",
+    Resolution.UHD: "4K",
+    Resolution.OTHER: "Otra",
+}
 
 STATUS_LABELS = {
     CheckStatus.ALIVE: "Activo",
@@ -48,6 +56,7 @@ templates.env.filters["short_hash"] = _short_hash
 templates.env.filters["ago"] = _ago
 templates.env.globals.update(
     status_labels=STATUS_LABELS,
+    resolution_labels=RESOLUTION_LABELS,
     language_name=language_name,
     country_name=country_name,
     language_choices=language_choices,

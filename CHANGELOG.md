@@ -9,6 +9,7 @@ Todos los cambios relevantes del proyecto se registran aquí. Formato basado en 
 - Icon actions (#46): play, edit and delete in each list row are now inline SVG icons (`_icons.html`) with accessible names and tooltips.
 - Copy hash button (#47): next to the Content ID in the list and the detail, a button copies the full hash to the clipboard and confirms it with a check mark (and a screen reader announcement). `static/app.js` holds the small script, with a fallback for browsers without the clipboard API.
 - Regenerate screenshots (#48): checks now take a screenshot only when the channel has none yet, so routine checks are faster; changing a channel's Content ID always takes a new one. "Regenerar capturas" in the list (for the filtered channels) and "Nueva captura" in the detail check again forcing a new screenshot of every live channel, after a confirmation that warns it takes longer.
+- Channel resolution (#49): channels have a resolution (480p, 720p, 1080p, 4K or Other) that is detected from each screenshot, by reading the JPEG header with no extra tools, and can also be set by hand; a detection replaces a hand-picked value. Checks store the exact frame size, shown in the detail history. The list shows the resolution and filters by it (including "Sin detectar"). Migration `0002` adds the columns.
 
 ## [1.0.0] - 2026-10-07
 

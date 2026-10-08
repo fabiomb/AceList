@@ -66,6 +66,8 @@
     <dd>{% if channel.language %}{{ language_name(channel.language) }} ({{ channel.language }}){% else %}—{% endif %}</dd>
     <dt>País</dt>
     <dd>{% if channel.country %}{{ country_name(channel.country) }} ({{ channel.country }}){% else %}—{% endif %}</dd>
+    <dt>Resolución</dt>
+    <dd>{{ resolution_labels[channel.resolution] if channel.resolution else "Sin detectar" }}</dd>
     <dt>Alta</dt>
     <dd><time datetime="{{ channel.created_at.isoformat() }}">{{ channel.created_at | localtime }}</time></dd>
   </dl>
@@ -81,6 +83,7 @@
         <th scope="col">Estado</th>
         <th scope="col" class="num">Peers</th>
         <th scope="col" class="num">Velocidad</th>
+        <th scope="col">Tamaño</th>
         <th scope="col">Infohash</th>
         <th scope="col">Captura</th>
         <th scope="col">Detalle</th>
@@ -94,6 +97,7 @@
         <td>{{ status_badge(check) }}</td>
         <td class="num">{{ check.peers if check.peers is not none else "—" }}</td>
         <td class="num" title="Valor informado por el engine">{{ check.speed_down if check.speed_down is not none else "—" }}</td>
+        <td>{% if check.width and check.height %}{{ check.width }}×{{ check.height }}{% else %}—{% endif %}</td>
         <td>{% if check.infohash %}<code title="{{ check.infohash }}">{{ check.infohash | short_hash }}</code>{% else %}—{% endif %}</td>
         <td class="thumb">
           {% if row.screenshot_url %}

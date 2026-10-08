@@ -103,3 +103,20 @@ def test_check_again_from_another_site_is_rejected(web, db, engine_down):
 
     assert response.status_code == 403
     assert not engine_down.called
+
+
+def test_detail_shows_resolution_and_frame_sizes(web, db):
+    channel = channels.create_channel(db, title="Uno", content_id=HASH_A, resolution="1080p")
+    checks.add_check(
+        db,
+        channel.id,
+        status=CheckStatus.ALIVE,
+        screenshot_path="screenshots/a.jpg",
+        width=1920,
+        height=1080,
+    )
+
+    page = web.get(f"/channels/{channel.id}").text
+
+    assert "<dt>Resolución</dt>\n    <dd>1080p</dd>" in page
+    assert "1920×1080" in page
