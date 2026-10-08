@@ -1,5 +1,6 @@
 import os
-from collections.abc import Iterable
+import subprocess
+from collections.abc import Callable, Iterable
 from pathlib import Path
 
 
@@ -21,3 +22,29 @@ def find_engine_executable(candidates: Iterable[Path] | None = None) -> str | No
         if candidate.is_file():
             return str(candidate)
     return None
+
+
+class EngineStartError(Exception):
+    """The engine executable could not be launched."""
+
+
+def start_engine(
+    path: str, *, launcher: Callable[..., subprocess.Popen] = subprocess.Popen
+) -> None:
+    """Launches the installed engine and returns at once; it takes a few seconds to answer."""
+    executable = Path(path)
+    if not executable.is_file():
+        raise EngineStartError(f"engine executable not found: {path}")
+    try:
+        # An argument list and no shell; detached so it outlives AceList, like VLC.
+        launcher(
+            [str(executable)],
+            cwd=str(executable.parent),
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            close_fds=True,
+            creationflags=getattr(subprocess, "DETACHED_PROCESS", 0),
+        )
+    except OSError as exc:
+        raise EngineStartError(f"could not start the engine: {exc}") from exc
