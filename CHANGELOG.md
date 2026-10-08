@@ -4,6 +4,9 @@ Todos los cambios relevantes del proyecto se registran aquí. Formato basado en 
 
 ## [Sin publicar]
 
+### Agregado
+- Executable-aware paths (#76): `config.resource_dir()` points at the files that ship with AceList (the bundle's `_internal` folder in the Windows executable) and `config.default_data_dir()` keeps the database and screenshots in `%LOCALAPPDATA%\AceList` when running as the executable, so updating the program folder never touches them. Running from source still uses `data/`, and `ACELIST_DATA_DIR` still wins.
+
 ## [1.2.0] - 2026-10-08
 
 Exportación e importación del catálogo, y AceList ahora sabe si Ace Stream está abierto: lo muestra, puede iniciarlo y no culpa a los canales cuando está apagado.
