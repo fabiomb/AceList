@@ -5,6 +5,7 @@ import pytest
 from app.db.models import CheckStatus
 from app.main import app
 from app.services import channels, checks
+from app.services.catalog import Screenshots
 from app.web import check_routes
 
 HASH_A = "78266c15035d0ad8cbc58f821733931e1de434ab"
@@ -128,11 +129,11 @@ def test_polling_keeps_what_the_page_watches(web, blocked):
 
 @pytest.fixture
 def checked(monkeypatch):
-    """Records the `force_capture` of every background check instead of running it."""
+    """Records whether each background check forces a screenshot, instead of running it."""
     calls = []
 
     def fake_check(session, client, channel_id, **kwargs):
-        calls.append((channel_id, kwargs["force_capture"]))
+        calls.append((channel_id, kwargs["screenshots"] is Screenshots.ALWAYS))
         return checks.add_check(session, channel_id, status=CheckStatus.ALIVE)
 
     monkeypatch.setattr(check_routes.catalog, "check_channel", fake_check)
@@ -175,3 +176,20 @@ def test_detail_new_screenshot_forces_one(web, two, engine_down, checked, wait_f
     assert response.headers["location"] == f"http://127.0.0.1/channels/{uno.id}"
     assert checked == [(uno.id, True)]
     assert web.post("/channels/999/screenshot").status_code == 404
+
+
+def test_import_takes_screenshots_only_of_new_channels(
+    web, db, engine_down, monkeypatch, wait_for_checks
+):
+    modes = []
+
+    def fake_check(session, client, channel_id, **kwargs):
+        modes.append(kwargs["screenshots"])
+        return checks.add_check(session, channel_id, status=CheckStatus.ALIVE)
+
+    monkeypatch.setattr(check_routes.catalog, "check_channel", fake_check)
+
+    web.post("/import", data={"links": HASH_A})
+    wait_for_checks()
+
+    assert modes == [Screenshots.IF_MISSING]

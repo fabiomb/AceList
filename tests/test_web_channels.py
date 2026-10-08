@@ -204,3 +204,29 @@ def test_detail_has_a_copy_button(web, db):
     page = web.get(f"/channels/{channel.id}").text
 
     assert f'data-copy="{HASH_A}" aria-label="Copiar el hash"' in page
+
+
+def test_list_keeps_showing_the_newest_screenshot_after_checks_without_one(web, db):
+    # Regression (#57): a check without screenshot hid the channel's older one.
+    channel = channels.create_channel(db, title="Uno", content_id=HASH_A)
+    now = datetime(2026, 10, 7, 12, 0, tzinfo=UTC)
+    checks.add_check(
+        db,
+        channel.id,
+        status=CheckStatus.ALIVE,
+        screenshot_path="screenshots/old.jpg",
+        checked_at=now - timedelta(days=2),
+    )
+    checks.add_check(
+        db,
+        channel.id,
+        status=CheckStatus.ALIVE,
+        screenshot_path="screenshots/newer.jpg",
+        checked_at=now - timedelta(days=1),
+    )
+    checks.add_check(db, channel.id, status=CheckStatus.NO_PEERS, checked_at=now)
+
+    page = web.get("/").text
+
+    assert 'src="/screenshots/newer.jpg"' in page
+    assert "Sin peers" in page  # the state is still the latest check's

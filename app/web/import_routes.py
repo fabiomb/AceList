@@ -5,6 +5,7 @@ from fastapi.responses import HTMLResponse
 
 from app.db.models import Category
 from app.services import categories, importer
+from app.services.catalog import Screenshots
 from app.services.errors import ServiceError, ValidationError
 from app.services.iso import normalize_country, normalize_language
 from app.web.check_routes import start_checks
@@ -95,6 +96,14 @@ def import_run(
 
     # New channels are verified in the background; the progress panel shows how it goes.
     created = [channel.id for channel in result.created]
-    start_checks(runner, created, session_factory, engine_factory, settings)
+    # New channels have no screenshot yet: their first check takes one.
+    start_checks(
+        runner,
+        created,
+        session_factory,
+        engine_factory,
+        settings,
+        screenshots=Screenshots.IF_MISSING,
+    )
     # The form comes back empty, ready for the next list; the summary stays below.
     return _render(request, session, {}, result=result)

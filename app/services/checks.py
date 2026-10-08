@@ -93,6 +93,29 @@ def get_latest_check(session: Session, channel_id: int) -> Check | None:
     ).first()
 
 
+def latest_screenshots(session: Session) -> dict[int, str]:
+    """Newest screenshot path of every channel that has one, keyed by channel id.
+
+    Not necessarily from the latest check: most checks take no screenshot.
+    """
+    ranked = (
+        select(
+            Check.channel_id.label("channel_id"),
+            Check.screenshot_path.label("path"),
+            func.row_number()
+            .over(
+                partition_by=Check.channel_id,
+                order_by=(Check.checked_at.desc(), Check.id.desc()),
+            )
+            .label("rank"),
+        )
+        .where(Check.screenshot_path.is_not(None))
+        .subquery()
+    )
+    rows = session.execute(select(ranked.c.channel_id, ranked.c.path).where(ranked.c.rank == 1))
+    return {channel_id: path for channel_id, path in rows}
+
+
 def latest_checks(session: Session) -> dict[int, Check]:
     """Most recent check of every channel that has at least one, keyed by channel id."""
     ranked = select(

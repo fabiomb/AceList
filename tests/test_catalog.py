@@ -8,6 +8,7 @@ from app.db.base import Base
 from app.db.models import CheckStatus, Resolution
 from app.db.session import make_engine, make_session_factory
 from app.services import catalog, categories, channels, checks
+from app.services.catalog import Screenshots
 from app.services.errors import DuplicateError, NotFoundError, ValidationError
 from app.services.screenshots import CaptureSettings, ScreenshotError
 from app.services.verification import VerificationSettings
@@ -336,22 +337,39 @@ def test_a_channel_with_a_screenshot_is_not_captured_again(
 def test_forcing_takes_a_new_screenshot(session, client, engine, shots, tmp_path):
     channel = add(session, client, tmp_path)
 
-    check = recheck(session, client, tmp_path, channel.id, force_capture=True)
+    check = recheck(session, client, tmp_path, channel.id, screenshots=Screenshots.ALWAYS)
 
     assert check.screenshot_path is not None
     assert len(shots.calls) == 2
 
 
-def test_a_channel_whose_screenshot_failed_gets_one_next_time(
+def test_a_plain_check_never_takes_a_screenshot_even_if_missing(
     session, client, engine, shots, tmp_path
 ):
+    # Checking is about availability and peers; images come from regenerating (#57).
     shots.fail = True
     channel = add(session, client, tmp_path)
     shots.fail = False
 
     check = recheck(session, client, tmp_path, channel.id)
 
-    assert check.screenshot_path is not None
+    assert check.status is CheckStatus.ALIVE
+    assert check.screenshot_path is None
+    assert len(shots.calls) == 1  # only the failed one when adding
+
+
+def test_if_missing_takes_one_only_for_a_channel_without_screenshot(
+    session, client, engine, shots, tmp_path
+):
+    shots.fail = True
+    channel = add(session, client, tmp_path)
+    shots.fail = False
+
+    first = recheck(session, client, tmp_path, channel.id, screenshots=Screenshots.IF_MISSING)
+    second = recheck(session, client, tmp_path, channel.id, screenshots=Screenshots.IF_MISSING)
+
+    assert first.screenshot_path is not None
+    assert second.screenshot_path is None
 
 
 def test_a_new_hash_always_gets_a_new_screenshot(session, client, engine, shots, tmp_path):
