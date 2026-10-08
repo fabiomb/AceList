@@ -4,6 +4,9 @@ Todos los cambios relevantes del proyecto se registran aquí. Formato basado en 
 
 ## [Sin publicar]
 
+### Cambiado
+- Compact channel list (#45): the creation date column is gone (sorting by it still works through the URL) and the last check shows as relative time ("hace 3 h", the date after a month) with the full date on hover, under a shorter "Verificado" header.
+
 ## [1.0.0] - 2026-10-07
 
 Primera versión completa: catálogo, verificación, interfaz web, reproducción en VLC, ajustes, re-verificación en segundo plano e importación masiva.

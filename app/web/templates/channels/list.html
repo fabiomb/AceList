@@ -94,8 +94,7 @@
         <th scope="col">País</th>
         {{ sort_header("status", "Estado") }}
         {{ sort_header("peers", "Peers", "num") }}
-        {{ sort_header("checked", "Última verificación") }}
-        {{ sort_header("created", "Alta") }}
+        {{ sort_header("checked", "Verificado") }}
         <th scope="col"><span class="visually-hidden">Acciones</span></th>
       </tr>
     </thead>
@@ -129,9 +128,8 @@
         </td>
         <td class="num">{{ check.peers if check and check.peers is not none else "—" }}</td>
         <td>
-          {% if check %}<time datetime="{{ check.checked_at.isoformat() }}">{{ check.checked_at | localtime }}</time>{% else %}Nunca{% endif %}
+          {% if check %}<time datetime="{{ check.checked_at.isoformat() }}" title="{{ check.checked_at | localtime }}">{{ check.checked_at | ago }}</time>{% else %}Nunca{% endif %}
         </td>
-        <td><time datetime="{{ channel.created_at.isoformat() }}">{{ channel.created_at | localtime }}</time></td>
         <td class="row-actions">
           <form class="inline" method="post" action="{{ url_for('channel_play', channel_id=channel.id) }}"
                 hx-post="{{ url_for('channel_play', channel_id=channel.id) }}" hx-target="#notices" hx-swap="innerHTML"

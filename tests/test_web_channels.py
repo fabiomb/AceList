@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 from app.db.models import CheckStatus
 from app.main import app
 from app.services import categories, channels, checks
+from app.web.templating import _ago
 
 HASH_A = "78266c15035d0ad8cbc58f821733931e1de434ab"
 HASH_B = "ecc85e5d2b6088d2d307fd0b5de4f09f089e762f"
@@ -139,3 +140,49 @@ def test_requests_for_other_hosts_are_rejected():
 
 def test_localhost_name_is_accepted(web):
     assert web.get("http://localhost/health").status_code == 200
+
+
+@pytest.mark.parametrize(
+    ("age", "expected"),
+    [
+        (timedelta(seconds=20), "ahora"),
+        (timedelta(minutes=5), "hace 5 min"),
+        (timedelta(hours=3, minutes=59), "hace 3 h"),
+        (timedelta(days=2), "hace 2 d"),
+        (timedelta(days=30), "hace 30 d"),
+    ],
+)
+def test_last_check_is_shown_as_relative_time(age, expected):
+    now = datetime(2026, 10, 7, 12, 0, tzinfo=UTC)
+
+    assert _ago(now - age, now) == expected
+
+
+def test_old_checks_show_the_date():
+    now = datetime(2026, 10, 7, 12, 0, tzinfo=UTC)
+
+    assert _ago(now - timedelta(days=45), now) == "2026-08-23"
+
+
+def test_list_has_no_creation_column_but_still_sorts_by_it(web, db):
+    channels.create_channel(db, title="Viejo", content_id=HASH_A)
+    newer = channels.create_channel(db, title="Nuevo", content_id=HASH_B)
+    newer.created_at = newer.created_at + timedelta(days=1)
+    db.commit()
+
+    page = web.get("/?sort=created&dir=desc").text
+
+    assert ">Alta<" not in page
+    assert "Verificado" in page
+    assert page.index(">Nuevo<") < page.index(">Viejo<")
+
+
+def test_last_check_cell_keeps_the_full_date_on_hover(web, db):
+    channel = channels.create_channel(db, title="Uno", content_id=HASH_A)
+    checked = datetime(2026, 10, 7, 12, 0, tzinfo=UTC)
+    checks.add_check(db, channel.id, status=CheckStatus.ALIVE, checked_at=checked)
+
+    page = web.get("/").text
+
+    local = checked.astimezone().strftime("%Y-%m-%d %H:%M")
+    assert f'title="{local}">' in page
