@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Annotated
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -66,6 +67,20 @@ def _get_channel_or_404(session: Session, channel_id: int) -> Channel:
         return channels.get_channel(session, channel_id)
     except NotFoundError as exc:
         raise HTTPException(status_code=404, detail="Canal no encontrado") from exc
+
+
+def _local_path(target: str) -> str | None:
+    """`target` if it is a path within this app, so a form cannot redirect elsewhere."""
+    parts = urlsplit(target)
+    if (
+        not target.startswith("/")
+        or target.startswith("//")
+        or "\\" in target
+        or parts.scheme
+        or parts.netloc
+    ):
+        return None
+    return target
 
 
 def _redirect(request: Request, name: str, **path_params) -> RedirectResponse:
@@ -250,12 +265,18 @@ def channel_check(
     runner: CheckRunnerDep,
     probe: EngineProbeDep,
     channel_id: int,
+    next: FormField = "",
 ):
+    """Checks one channel; `next` is the page to go back to (the list), else its detail."""
     _get_channel_or_404(session, channel_id)
-    response = _redirect(request, "channel_detail", channel_id=channel_id)
+    target = _local_path(next)
+    if target is None:
+        response = _redirect(request, "channel_detail", channel_id=channel_id)
+    else:
+        response = RedirectResponse(target, status_code=303)
     if probe() is None:
         return flash(response, ENGINE_DOWN)
-    # In the background: the detail page shows the progress and reloads when it is done.
+    # In the background: the page shows the progress and reloads when it is done.
     start_checks(runner, [channel_id], session_factory, engine_factory, settings)
     return response
 

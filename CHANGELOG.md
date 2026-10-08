@@ -8,6 +8,7 @@ Todos los cambios relevantes del proyecto se registran aquí. Formato basado en 
 - Engine pre-check (#63): "Verificar", "Regenerar capturas", "Nueva captura", adding, importing and changing a link first ask the engine for its version. If it does not answer, no check starts and the page says "Ace Stream no está abierto o no responde"; added, imported or edited channels are saved and left unchecked. Notices that follow a redirect are one-shot (`app/web/flash.py`).
 - Ace Stream indicator (#64): the top bar of every page shows whether the engine answers ("Ace Stream 3.1.74" in green, "Ace Stream apagado" in red, the configured URL on hover). It is loaded by htmx after the page and refreshed every 30 s, so an engine that is off never slows a page down.
 - Start Ace Stream (#65): when the engine is off and `ace_engine.exe` is found (the "Engine de Ace Stream" setting, or the usual install folders), the indicator offers "Iniciar". It launches the engine detached and without a shell, waits up to 30 s for it to answer and shows the result, or says why it could not.
+- Check one channel from the list (#70): a button next to each status badge checks just that channel in the background and comes back to the same list, with its filters and order, which reloads with the new state when done.
 
 ### Corregido
 - New styles and scripts now reach the browser right away: their URLs carry a hash of the file's content (`style.css?v=…`), so a browser can no longer keep an old stylesheet from its cache, which left "Iniciar" and "Iniciando…" showing together.

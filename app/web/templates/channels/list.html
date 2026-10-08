@@ -55,12 +55,17 @@
           {% if channel.country %}<abbr title="{{ country_name(channel.country) }}">{{ channel.country }}</abbr>{% else %}—{% endif %}
         </td>
         <td>{% if channel.resolution %}<span class="resolution">{{ resolution_labels[channel.resolution] }}</span>{% else %}—{% endif %}</td>
-        <td>
+        <td class="status-cell">
           {% if check %}
           <span class="status status-{{ check.status.value }}"{% if check.error_message %} title="{{ check.error_message }}"{% endif %}>{{ status_labels[check.status] }}</span>
           {% else %}
           <span class="status status-unchecked">Sin verificar</span>
           {% endif %}
+          {# Checks only this channel and comes back to this same list. #}
+          <form class="inline" method="post" action="{{ url_for('channel_check', channel_id=channel.id) }}" hx-disabled-elt="find button">
+            <input type="hidden" name="next" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}">
+            <button type="submit" class="icon-button recheck-button" aria-label="Verificar {{ channel.title }}" title="Verificar este canal">{{ icon("recheck") }}</button>
+          </form>
         </td>
         <td class="num">{{ check.peers if check and check.peers is not none else "—" }}</td>
         <td>

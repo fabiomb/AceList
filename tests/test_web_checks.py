@@ -250,3 +250,54 @@ def test_an_unknown_notice_code_shows_nothing(web, two):
     web.cookies.set("acelist_notice", "<script>")
 
     assert "<script>" not in web.get("/").text
+
+
+# check one channel from the list (#70)
+
+
+def test_list_has_a_check_button_per_channel(web, two):
+    page = web.get("/?q=o&sort=title&dir=asc").text
+
+    uno, _ = two
+    assert f'action="http://127.0.0.1/channels/{uno.id}/check"' in page
+    assert 'name="next" value="/?q=o&amp;sort=title&amp;dir=asc"' in page
+    assert 'aria-label="Verificar Uno"' in page
+
+
+def test_checking_one_channel_from_the_list_comes_back_to_it(
+    web, db, two, engine_empty, wait_for_checks
+):
+    uno, dos = two
+
+    response = web.post(
+        f"/channels/{uno.id}/check", data={"next": "/?q=o&sort=peers"}, follow_redirects=False
+    )
+    wait_for_checks()
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/?q=o&sort=peers"
+    assert app.state.check_runner.current().total == 1
+    assert [c.status for c in checks.list_checks(db, uno.id)] == [CheckStatus.NOT_FOUND]
+    assert checks.list_checks(db, dos.id) == []
+
+
+@pytest.mark.parametrize(
+    "target",
+    ["https://attacker.example/", "//attacker.example/", r"/\attacker.example", "javascript:x", ""],
+)
+def test_check_never_redirects_outside_the_app(web, two, engine_empty, target):
+    uno, _ = two
+
+    response = web.post(f"/channels/{uno.id}/check", data={"next": target}, follow_redirects=False)
+
+    assert response.headers["location"] == f"http://127.0.0.1/channels/{uno.id}"
+
+
+def test_checking_one_channel_with_the_engine_off_says_so_on_the_list(web, two, engine_down):
+    uno, _ = two
+
+    page = web.post(f"/channels/{uno.id}/check", data={"next": "/?q=uno"}).text
+
+    assert app.state.check_runner.current() is None
+    assert "Ace Stream no está abierto o no responde" in page
+    assert ">Uno<" in page and ">Dos<" not in page
