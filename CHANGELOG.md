@@ -4,6 +4,9 @@ Todos los cambios relevantes del proyecto se registran aquí. Formato basado en 
 
 ## [Sin publicar]
 
+### Agregado
+- Engine pre-check (#63): "Verificar", "Regenerar capturas", "Nueva captura", adding, importing and changing a link first ask the engine for its version. If it does not answer, no check starts and the page says "Ace Stream no está abierto o no responde"; added, imported or edited channels are saved and left unchecked. Notices that follow a redirect are one-shot (`app/web/flash.py`).
+
 ### Corregido
 - An engine that is off is no longer blamed on the channels (#62): when Ace Stream cannot be reached, no `error` check is stored. A background batch stops at the first such failure and says so ("Verificación interrumpida: Ace Stream no responde"), dropping the queued checks, and adding, importing or changing a link with the engine off saves the channel unchecked. Timeouts and other engine errors are still recorded as `error`.
 

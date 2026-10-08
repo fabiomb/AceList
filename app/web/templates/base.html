@@ -23,6 +23,8 @@
   <main class="content">
     {# Results of in-page actions, such as opening a channel in VLC. #}
     <div id="notices" aria-live="polite"></div>
+    {% set flashed = flash_message(request) %}
+    {% if flashed %}<p class="notice notice-error" role="alert">{{ flashed }}</p>{% endif %}
     <div id="announcer" class="visually-hidden" aria-live="polite"></div>
     {# A page that must not reload when checks end sets `reload_on_checks = false`. #}
     {% with batch = request.app.state.check_runner.current() %}

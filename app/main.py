@@ -14,6 +14,7 @@ from app.db.session import make_engine, make_session_factory
 from app.services.batch import CheckRunner
 from app.services.screenshots import SCREENSHOTS_SUBDIR
 from app.web import check_routes, import_routes, settings_routes
+from app.web.flash import clear_shown_flash
 from app.web.routes import router
 from app.web.templating import STATIC_DIR
 
@@ -42,6 +43,13 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="AceList", lifespan=lifespan)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=ALLOWED_HOSTS)
+
+
+@app.middleware("http")
+async def consume_flash(request: Request, call_next):
+    response = await call_next(request)
+    clear_shown_flash(request, response)
+    return response
 
 
 @app.middleware("http")

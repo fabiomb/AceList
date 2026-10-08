@@ -12,6 +12,7 @@ from app.web.check_routes import start_checks
 from app.web.deps import (
     CheckRunnerDep,
     EngineFactoryDep,
+    EngineProbeDep,
     SessionDep,
     SessionFactoryDep,
     SettingsDep,
@@ -24,7 +25,9 @@ router = APIRouter(prefix="/import")
 FormField = Annotated[str, Form()]
 
 
-def _render(request: Request, session, values: dict, *, errors=None, result=None) -> HTMLResponse:
+def _render(
+    request: Request, session, values: dict, *, errors=None, result=None, engine_down=False
+) -> HTMLResponse:
     return templates.TemplateResponse(
         request,
         "import.html",
@@ -32,6 +35,7 @@ def _render(request: Request, session, values: dict, *, errors=None, result=None
             "values": values,
             "errors": errors or {},
             "result": result,
+            "engine_down": engine_down,
             "categories": categories.list_categories(session),
             "max_lines": importer.MAX_LINES,
         },
@@ -52,6 +56,7 @@ def import_run(
     engine_factory: EngineFactoryDep,
     settings: SettingsDep,
     runner: CheckRunnerDep,
+    probe: EngineProbeDep,
     links: FormField = "",
     category_id: FormField = "",
     new_category: FormField = "",
@@ -96,6 +101,9 @@ def import_run(
 
     # New channels are verified in the background; the progress panel shows how it goes.
     created = [channel.id for channel in result.created]
+    if created and probe() is None:
+        # The import stands; only the checks wait for the engine.
+        return _render(request, session, {}, result=result, engine_down=True)
     # New channels have no screenshot yet: their first check takes one.
     start_checks(
         runner,

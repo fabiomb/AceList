@@ -152,7 +152,7 @@ def test_engine_test_rejects_a_bad_url_without_any_request(web, detected, respx_
     assert not respx_mock.calls
 
 
-def test_saved_engine_url_is_used_for_checks(web, db, respx_mock, wait_for_checks):
+def test_saved_engine_url_is_used_for_checks(web, db, respx_mock):
     # The real engine client dependency, not the test double.
     app.dependency_overrides.pop(get_engine_factory, None)
     save_settings(db, AppSettings(engine_url="http://10.0.0.3:7000", engine_timeout=1))
@@ -161,10 +161,12 @@ def test_saved_engine_url_is_used_for_checks(web, db, respx_mock, wait_for_check
         side_effect=httpx.ConnectError("refused")
     )
 
-    web.post(f"/channels/{channel.id}/check")
-    wait_for_checks()
+    page = web.post(f"/channels/{channel.id}/check").text
 
+    # The pre-check went to the saved URL, found nothing and started no checks.
     assert route.called
+    assert app.state.check_runner.current() is None
+    assert "Ace Stream no está abierto" in page
 
 
 def test_settings_writes_from_other_sites_are_rejected(web, db, detected):

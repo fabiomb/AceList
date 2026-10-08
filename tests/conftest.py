@@ -93,6 +93,9 @@ def engine_empty(web, respx_mock):
     """The web app's engine, running but unable to load anything: every check is `not_found`."""
     base = "http://engine-empty.test"
     app.dependency_overrides[get_engine_factory] = lambda: lambda: EngineClient(base, timeout=1)
+    respx_mock.get(f"{base}/webui/api/service").respond(
+        json={"result": {"version": "3.1.74", "code": 3017400, "platform": "win32"}, "error": None}
+    )
     respx_mock.get(f"{base}/server/api").respond(
         json={"error": {"message": "cannot get transport file", "code": 0}}
     )

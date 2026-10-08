@@ -39,6 +39,12 @@ class SimulatedEngine:
         respx_mock.get(url__startswith=f"{ENGINE}/ace/stat/").mock(side_effect=self._stat)
         respx_mock.get(url__startswith=f"{ENGINE}/ace/cmd/").mock(side_effect=self._stop)
         respx_mock.get(f"{ENGINE}/server/api").mock(side_effect=self._media_files)
+        respx_mock.get(f"{ENGINE}/webui/api/service").respond(
+            json={
+                "result": {"version": "3.1.74", "code": 3017400, "platform": "win32"},
+                "error": None,
+            }
+        )
 
     def _media_files(self, request):
         content_id = request.url.params["content_id"]

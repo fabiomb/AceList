@@ -90,3 +90,14 @@ def test_import_from_another_site_is_rejected(web, db):
 
     assert response.status_code == 403
     assert channels.list_channels(db) == []
+
+
+def test_import_with_the_engine_off_keeps_the_channels_unchecked(web, db, engine_down):
+    page = web.post("/import", data=form(links=HASH_A)).text
+
+    channel = channels.find_channel_by_content_id(db, HASH_A)
+    assert channel is not None
+    assert checks.list_checks(db, channel.id) == []
+    assert app.state.check_runner.current() is None
+    assert "Ace Stream no responde: los canales nuevos quedan sin verificar" in page
+    assert "se están verificando" not in page

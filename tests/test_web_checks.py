@@ -1,5 +1,6 @@
 import threading
 
+import httpx
 import pytest
 
 from app.db.models import CheckStatus
@@ -98,7 +99,7 @@ def test_dismiss_hides_a_finished_batch(web, wait_for_checks):
     assert "Verificación terminada" not in web.get("/").text
 
 
-def test_detail_check_runs_in_the_background(web, db, two, engine_down, blocked):
+def test_detail_check_runs_in_the_background(web, db, two, engine_empty, blocked):
     uno, _ = two
 
     response = web.post(f"/channels/{uno.id}/check", follow_redirects=False)
@@ -149,7 +150,7 @@ def test_list_offers_to_regenerate_screenshots_with_a_warning(web, two):
 
 
 def test_regenerating_forces_screenshots_of_the_listed_channels(
-    web, two, engine_down, checked, wait_for_checks
+    web, two, engine_empty, checked, wait_for_checks
 ):
     response = web.post("/checks/screenshots?q=uno", follow_redirects=False)
     wait_for_checks()
@@ -158,14 +159,14 @@ def test_regenerating_forces_screenshots_of_the_listed_channels(
     assert checked == [(two[0].id, True)]
 
 
-def test_plain_checks_do_not_force_screenshots(web, two, engine_down, checked, wait_for_checks):
+def test_plain_checks_do_not_force_screenshots(web, two, engine_empty, checked, wait_for_checks):
     web.post("/checks")
     wait_for_checks()
 
     assert sorted(checked) == sorted([(two[0].id, False), (two[1].id, False)])
 
 
-def test_detail_new_screenshot_forces_one(web, two, engine_down, checked, wait_for_checks):
+def test_detail_new_screenshot_forces_one(web, two, engine_empty, checked, wait_for_checks):
     uno, _ = two
     page = web.get(f"/channels/{uno.id}").text
     assert "Nueva captura" in page and "hx-confirm=" in page
@@ -179,7 +180,7 @@ def test_detail_new_screenshot_forces_one(web, two, engine_down, checked, wait_f
 
 
 def test_import_takes_screenshots_only_of_new_channels(
-    web, db, engine_down, monkeypatch, wait_for_checks
+    web, db, engine_empty, monkeypatch, wait_for_checks
 ):
     modes = []
 
@@ -196,9 +197,11 @@ def test_import_takes_screenshots_only_of_new_channels(
 
 
 def test_a_batch_that_loses_the_engine_stops_and_blames_no_channel(
-    web, db, two, engine_down, wait_for_checks
+    web, db, two, engine_empty, wait_for_checks
 ):
-    # #62: an engine that is off says nothing about the channels.
+    # #62: the engine answers the pre-check, then goes away mid-batch.
+    engine_empty.mock(side_effect=httpx.ConnectError("gone"))
+
     web.post("/checks")
     wait_for_checks()
 
@@ -210,3 +213,40 @@ def test_a_batch_that_loses_the_engine_stops_and_blames_no_channel(
     assert "Verificación interrumpida" in page
     assert "Ace Stream no responde" in page
     assert "status-error" not in page
+
+
+# pre-check (#63)
+
+
+@pytest.mark.parametrize("path", ["/checks", "/checks/screenshots"])
+def test_batch_checks_do_not_start_without_the_engine(web, db, two, engine_down, path):
+    response = web.post(path, follow_redirects=False)
+
+    assert response.status_code == 303
+    assert app.state.check_runner.current() is None
+    page = web.get(response.headers["location"]).text
+    assert "Ace Stream no está abierto o no responde" in page
+
+
+@pytest.mark.parametrize("action", ["check", "screenshot"])
+def test_detail_checks_do_not_start_without_the_engine(web, db, two, engine_down, action):
+    uno, _ = two
+
+    response = web.post(f"/channels/{uno.id}/{action}")
+
+    assert app.state.check_runner.current() is None
+    assert checks.list_checks(db, uno.id) == []
+    assert "Ace Stream no está abierto o no responde" in response.text
+
+
+def test_the_notice_is_shown_once(web, two, engine_down):
+    web.post("/checks", follow_redirects=False)
+
+    assert "Ace Stream no está abierto" in web.get("/").text
+    assert "Ace Stream no está abierto" not in web.get("/").text
+
+
+def test_an_unknown_notice_code_shows_nothing(web, two):
+    web.cookies.set("acelist_notice", "<script>")
+
+    assert "<script>" not in web.get("/").text
