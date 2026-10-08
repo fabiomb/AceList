@@ -11,95 +11,10 @@
 {% endmacro %}
 
 {% block content %}
-<div class="page-head">
-  <h1>Canales</h1>
-  <a class="button primary" href="{{ url_for('channel_new') }}">Agregar canal</a>
-</div>
+{% set view = "list" %}
+{% include "channels/_browse_head.html" %}
 
-{% if catalog_empty %}
-<section class="empty-state">
-  <p class="empty-title">Todavía no hay canales en el catálogo.</p>
-  <p>Cuando agregues un Content ID o un enlace <code>acestream://</code>, aparecerá aquí con su estado y su última verificación.</p>
-  <p><a class="button primary" href="{{ url_for('channel_new') }}">Agregar el primer canal</a></p>
-</section>
-{% else %}
-<form class="filters" method="get" action="{{ url_for('channel_list') }}" role="search">
-  <input type="hidden" name="sort" value="{{ query.sort.value }}">
-  <input type="hidden" name="dir" value="{{ 'desc' if query.descending else 'asc' }}">
-  <div class="field">
-    <label for="q">Buscar</label>
-    <input id="q" name="q" type="search" placeholder="Título o Content ID" value="{{ query.text or '' }}">
-  </div>
-  <div class="field">
-    <label for="f-category">Categoría</label>
-    <select id="f-category" name="category">
-      <option value="">Todas</option>
-      {% for category in categories %}
-      <option value="{{ category.id }}"{% if query.category_id == category.id %} selected{% endif %}>{{ category.name }}</option>
-      {% endfor %}
-    </select>
-  </div>
-  <div class="field">
-    <label for="f-language">Idioma</label>
-    <select id="f-language" name="language">
-      <option value="">Todos</option>
-      {% for code in languages %}
-      <option value="{{ code }}"{% if query.language == code %} selected{% endif %}>{{ language_name(code) }} ({{ code }})</option>
-      {% endfor %}
-    </select>
-  </div>
-  <div class="field">
-    <label for="f-country">País</label>
-    <select id="f-country" name="country">
-      <option value="">Todos</option>
-      {% for code in countries %}
-      <option value="{{ code }}"{% if query.country == code %} selected{% endif %}>{{ country_name(code) }} ({{ code }})</option>
-      {% endfor %}
-    </select>
-  </div>
-  <div class="field">
-    <label for="f-status">Estado</label>
-    <select id="f-status" name="status">
-      <option value="">Todos</option>
-      {% for status, label in status_labels.items() %}
-      <option value="{{ status.value }}"{% if query.status == status.value %} selected{% endif %}>{{ label }}</option>
-      {% endfor %}
-      <option value="unchecked"{% if query.status == "unchecked" %} selected{% endif %}>Sin verificar</option>
-    </select>
-  </div>
-  <div class="field">
-    <label for="f-resolution">Resolución</label>
-    <select id="f-resolution" name="resolution">
-      <option value="">Todas</option>
-      {% for value, label in resolution_labels.items() %}
-      <option value="{{ value.value }}"{% if query.resolution == value.value %} selected{% endif %}>{{ label }}</option>
-      {% endfor %}
-      <option value="unknown"{% if query.resolution == "unknown" %} selected{% endif %}>Sin detectar</option>
-    </select>
-  </div>
-  <div class="filter-actions">
-    <button type="submit" class="button">Filtrar</button>
-    {% if filtered %}<a href="{{ url_for('channel_list') }}">Quitar filtros</a>{% endif %}
-  </div>
-</form>
-
-<div class="list-bar">
-  <p class="result-count">{{ rows | length }} {{ "canal" if rows | length == 1 else "canales" }}{% if filtered %} con estos filtros{% endif %}</p>
-  {% if rows %}
-  {% set listed = "este canal" if rows | length == 1 else ("los " ~ (rows | length) ~ " canales") %}
-  {% set query_string = ("?" ~ request.url.query) if request.url.query else "" %}
-  <div class="list-actions">
-    <form method="post" action="{{ url_for('checks_screenshots') }}{{ query_string }}"
-          hx-confirm="Regenerar las capturas de {{ listed }}: se verifica cada canal y se saca una captura nueva de los que estén activos. Tarda bastante más que una verificación normal (unos segundos extra por canal activo). ¿Continuar?">
-      <button type="submit" class="button">Regenerar capturas</button>
-    </form>
-    <form method="post" action="{{ url_for('checks_start') }}{{ query_string }}">
-      <button type="submit" class="button">Verificar {{ listed }}</button>
-    </form>
-  </div>
-  {% endif %}
-</div>
-
+{% if not catalog_empty %}
 {% if rows %}
 <div class="table-wrap">
   <table class="channels">

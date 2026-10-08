@@ -104,8 +104,8 @@ def _sort_links(request: Request, query: ChannelQuery) -> dict[str, str]:
     return links
 
 
-@router.get("/", response_class=HTMLResponse, name="channel_list")
-def channel_list(request: Request, session: SessionDep):
+def _browse_context(request: Request, session: Session) -> dict:
+    """What the list and the gallery share: rows for the URL's filters and the filter options."""
     query = parse_query(request.query_params)
     # The newest screenshot, which is usually older than the latest check.
     shots = checks.latest_screenshots(session)
@@ -123,25 +123,53 @@ def channel_list(request: Request, session: SessionDep):
             query.resolution,
         )
     )
-    return templates.TemplateResponse(
-        request,
-        "channels/list.html",
-        {
-            "rows": rows,
-            "query": query,
-            "filtered": filtered,
-            # Distinguishes "nothing matches" from "nothing at all".
-            "catalog_empty": not rows and not filtered,
-            "sort_links": _sort_links(request, query),
-            "categories": categories.list_categories(session),
-            "languages": sorted(
-                listing.used_languages(session), key=lambda code: language_name(code) or code
-            ),
-            "countries": sorted(
-                listing.used_countries(session), key=lambda code: country_name(code) or code
-            ),
-        },
-    )
+    return {
+        "rows": rows,
+        "query": query,
+        "filtered": filtered,
+        # Distinguishes "nothing matches" from "nothing at all".
+        "catalog_empty": not rows and not filtered,
+        "categories": categories.list_categories(session),
+        "languages": sorted(
+            listing.used_languages(session), key=lambda code: language_name(code) or code
+        ),
+        "countries": sorted(
+            listing.used_countries(session), key=lambda code: country_name(code) or code
+        ),
+    }
+
+
+@router.get("/", response_class=HTMLResponse, name="channel_list")
+def channel_list(request: Request, session: SessionDep):
+    context = _browse_context(request, session)
+    context["sort_links"] = _sort_links(request, context["query"])
+    return templates.TemplateResponse(request, "channels/list.html", context)
+
+
+@dataclass(frozen=True)
+class GallerySection:
+    title: str
+    rows: list[ChannelRow]
+
+
+def _gallery_sections(rows: list[ChannelRow]) -> list[GallerySection]:
+    """One section per category, A-Z, then the uncategorized; rows keep the chosen order."""
+    by_category: dict[str | None, list[ChannelRow]] = {}
+    for row in rows:
+        name = row.channel.category.name if row.channel.category else None
+        by_category.setdefault(name, []).append(row)
+    names = sorted((name for name in by_category if name is not None), key=str.casefold)
+    sections = [GallerySection(name, by_category[name]) for name in names]
+    if None in by_category:
+        sections.append(GallerySection("Sin categoría", by_category[None]))
+    return sections
+
+
+@router.get("/gallery", response_class=HTMLResponse, name="channel_gallery")
+def channel_gallery(request: Request, session: SessionDep):
+    context = _browse_context(request, session)
+    context["sections"] = _gallery_sections(context["rows"])
+    return templates.TemplateResponse(request, "channels/gallery.html", context)
 
 
 @router.get("/channels/new", response_class=HTMLResponse, name="channel_new")

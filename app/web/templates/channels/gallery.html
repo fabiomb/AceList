@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+
+{% block title %}Galería · AceList{% endblock %}
+
+{% block content %}
+{% set view = "gallery" %}
+{% include "channels/_browse_head.html" %}
+
+{% if not catalog_empty %}
+{% if sections %}
+{% for section in sections %}
+<section class="gallery-section" aria-labelledby="section-{{ loop.index }}">
+  <h2 id="section-{{ loop.index }}">{{ section.title }} <span class="section-count">{{ section.rows | length }}</span></h2>
+  <ul class="gallery" role="list">
+    {% for row in section.rows %}
+    {% set channel = row.channel %}
+    {% set check = row.check %}
+    <li class="tile">
+      <div class="tile-media">
+        <a class="tile-link" href="{{ url_for('channel_detail', channel_id=channel.id) }}" aria-label="{{ channel.title }}">
+          {% if row.screenshot_url %}
+          <img src="{{ row.screenshot_url }}" alt="" loading="lazy">
+          {% else %}
+          <span class="tile-placeholder" aria-hidden="true">{{ channel.title[:2] | upper }}</span>
+          {% endif %}
+        </a>
+        {% if check %}
+        <span class="tile-status status-{{ check.status.value }}" title="{{ status_labels[check.status] }}">{{ status_labels[check.status] }}</span>
+        {% else %}
+        <span class="tile-status status-unchecked" title="Sin verificar">Sin verificar</span>
+        {% endif %}
+        <form class="tile-play" method="post" action="{{ url_for('channel_play', channel_id=channel.id) }}"
+              hx-post="{{ url_for('channel_play', channel_id=channel.id) }}" hx-target="#notices" hx-swap="innerHTML"
+              hx-disabled-elt="find button">
+          <button type="submit" class="play-button" aria-label="Reproducir {{ channel.title }}" title="Reproducir">{{ icon("play") }}</button>
+        </form>
+      </div>
+      <h3 class="tile-title{% if channel.title_pending %} pending-title{% endif %}">
+        <a href="{{ url_for('channel_detail', channel_id=channel.id) }}">{{ channel.title }}</a>
+      </h3>
+      <ul class="tags" role="list" aria-label="Etiquetas">
+        {% if channel.resolution %}<li class="tag tag-resolution">{{ resolution_labels[channel.resolution] }}</li>{% endif %}
+        {% if channel.category %}<li class="tag">{{ channel.category.name }}</li>{% endif %}
+        {% if channel.language %}<li class="tag" title="{{ language_name(channel.language) }}">{{ channel.language | upper }}</li>{% endif %}
+        {% if channel.country %}<li class="tag" title="{{ country_name(channel.country) }}">{{ channel.country }}</li>{% endif %}
+      </ul>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endfor %}
+{% else %}
+<section class="empty-state">
+  <p class="empty-title">Ningún canal coincide con estos filtros.</p>
+  <p><a href="{{ url_for('channel_gallery') }}">Quitar filtros</a></p>
+</section>
+{% endif %}
+{% endif %}
+{% endblock %}
