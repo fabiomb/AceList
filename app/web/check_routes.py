@@ -21,7 +21,11 @@ router = APIRouter(prefix="/checks")
 
 
 def check_work(
-    session_factory: sessionmaker[Session], engine_factory: EngineFactory, settings: AppSettings
+    session_factory: sessionmaker[Session],
+    engine_factory: EngineFactory,
+    settings: AppSettings,
+    *,
+    force_capture: bool = False,
 ) -> CheckWork:
     """One background check: its own session and engine client, as it runs in another thread."""
 
@@ -33,6 +37,7 @@ def check_work(
                 channel_id,
                 settings=settings.verification(),
                 capture=settings.capture(),
+                force_capture=force_capture,
             )
             return check.status
 
@@ -45,9 +50,20 @@ def start_checks(
     session_factory: sessionmaker[Session],
     engine_factory: EngineFactory,
     settings: AppSettings,
+    *,
+    force_capture: bool = False,
 ) -> None:
-    work = check_work(session_factory, engine_factory, settings)
+    work = check_work(session_factory, engine_factory, settings, force_capture=force_capture)
     runner.submit(channel_ids, work, max_workers=settings.check_concurrency)
+
+
+def _check_listed(request, session, session_factory, engine_factory, settings, runner, force):
+    query = parse_query(request.query_params)
+    ids = [channel.id for channel, _ in listing.search_channels(session, query)]
+    start_checks(runner, ids, session_factory, engine_factory, settings, force_capture=force)
+    url = request.url_for("channel_list").include_query_params(**request.query_params)
+    # 303 turns the POST into a GET, so reloading the list never starts the checks again.
+    return RedirectResponse(url, status_code=303)
 
 
 @router.post("", name="checks_start")
@@ -60,12 +76,24 @@ def checks_start(
     runner: CheckRunnerDep,
 ):
     """Checks every channel the list shows with the filters in the query string."""
-    query = parse_query(request.query_params)
-    ids = [channel.id for channel, _ in listing.search_channels(session, query)]
-    start_checks(runner, ids, session_factory, engine_factory, settings)
-    url = request.url_for("channel_list").include_query_params(**request.query_params)
-    # 303 turns the POST into a GET, so reloading the list never starts the checks again.
-    return RedirectResponse(url, status_code=303)
+    return _check_listed(
+        request, session, session_factory, engine_factory, settings, runner, force=False
+    )
+
+
+@router.post("/screenshots", name="checks_screenshots")
+def checks_screenshots(
+    request: Request,
+    session: SessionDep,
+    session_factory: SessionFactoryDep,
+    engine_factory: EngineFactoryDep,
+    settings: SettingsDep,
+    runner: CheckRunnerDep,
+):
+    """Like `checks_start`, but every live channel gets a new screenshot."""
+    return _check_listed(
+        request, session, session_factory, engine_factory, settings, runner, force=True
+    )
 
 
 @router.get("/status", response_class=HTMLResponse, name="checks_status")

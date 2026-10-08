@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.acestream.client import EngineClient, StreamSession
@@ -31,16 +32,20 @@ def check_channel(
     *,
     settings: VerificationSettings | None = None,
     capture: CaptureSettings | None = None,
+    force_capture: bool = False,
     data_dir: Path = DATA_DIR,
 ) -> Check:
-    """Verifies a channel, takes a screenshot if it is alive, and stores the result.
+    """Verifies a channel and stores the result.
 
+    A live channel gets a screenshot only if it has none yet, or with `force_capture`:
+    capturing adds seconds per channel, so routine checks skip it.
     Never raises for engine or screenshot problems: they end up in the stored check.
     Blocks while the engine is polled, so call it from a worker thread.
     """
     channel = channels.get_channel(session, channel_id)
     content_id = channel.content_id
     capture = capture or CaptureSettings()
+    wants_screenshot = force_capture or not has_screenshot(session, channel_id)
     screenshot: str | None = None
 
     def take_screenshot(stream: StreamSession) -> None:
@@ -57,8 +62,21 @@ def check_channel(
             # A missing screenshot must not turn a live channel into a failed check.
             log.warning("no screenshot for %s: %s", content_id, exc)
 
-    result = verify(client, content_id, settings, on_alive=take_screenshot)
+    result = verify(
+        client, content_id, settings, on_alive=take_screenshot if wants_screenshot else None
+    )
     return record_verification(session, channel_id, result, screenshot_path=screenshot)
+
+
+def has_screenshot(session: Session, channel_id: int) -> bool:
+    return (
+        session.scalar(
+            select(Check.id)
+            .where(Check.channel_id == channel_id, Check.screenshot_path.is_not(None))
+            .limit(1)
+        )
+        is not None
+    )
 
 
 def add_channel(
@@ -121,9 +139,16 @@ def edit_channel(
 
     channels.update_channel(session, channel_id, **changes)
     if hash_changed:
-        # History is kept: it is how the user sees that the old link died.
+        # History is kept: it is how the user sees that the old link died. The new
+        # link is another stream, so the old screenshots no longer show it.
         check_channel(
-            session, client, channel_id, settings=settings, capture=capture, data_dir=data_dir
+            session,
+            client,
+            channel_id,
+            settings=settings,
+            capture=capture,
+            force_capture=True,
+            data_dir=data_dir,
         )
     return channel
 

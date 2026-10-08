@@ -76,9 +76,17 @@
 <div class="list-bar">
   <p class="result-count">{{ rows | length }} {{ "canal" if rows | length == 1 else "canales" }}{% if filtered %} con estos filtros{% endif %}</p>
   {% if rows %}
-  <form method="post" action="{{ url_for('checks_start') }}{% if request.url.query %}?{{ request.url.query }}{% endif %}">
-    <button type="submit" class="button">Verificar {{ "este canal" if rows | length == 1 else ("los " ~ (rows | length) ~ " canales") }}</button>
-  </form>
+  {% set listed = "este canal" if rows | length == 1 else ("los " ~ (rows | length) ~ " canales") %}
+  {% set query_string = ("?" ~ request.url.query) if request.url.query else "" %}
+  <div class="list-actions">
+    <form method="post" action="{{ url_for('checks_screenshots') }}{{ query_string }}"
+          hx-confirm="Regenerar las capturas de {{ listed }}: se verifica cada canal y se saca una captura nueva de los que estén activos. Tarda bastante más que una verificación normal (unos segundos extra por canal activo). ¿Continuar?">
+      <button type="submit" class="button">Regenerar capturas</button>
+    </form>
+    <form method="post" action="{{ url_for('checks_start') }}{{ query_string }}">
+      <button type="submit" class="button">Verificar {{ listed }}</button>
+    </form>
+  </div>
   {% endif %}
 </div>
 

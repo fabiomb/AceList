@@ -5,6 +5,7 @@ import pytest
 from app.db.models import CheckStatus
 from app.main import app
 from app.services import channels, checks
+from app.web import check_routes
 
 HASH_A = "78266c15035d0ad8cbc58f821733931e1de434ab"
 HASH_B = "ecc85e5d2b6088d2d307fd0b5de4f09f089e762f"
@@ -123,3 +124,54 @@ def test_import_page_never_asks_for_a_reload(web, blocked):
 def test_polling_keeps_what_the_page_watches(web, blocked):
     assert f'"watching": "{blocked.id}"' in web.get(f"/checks/status?watching={blocked.id}").text
     assert '"watching": ""' in web.get("/checks/status?watching=").text
+
+
+@pytest.fixture
+def checked(monkeypatch):
+    """Records the `force_capture` of every background check instead of running it."""
+    calls = []
+
+    def fake_check(session, client, channel_id, **kwargs):
+        calls.append((channel_id, kwargs["force_capture"]))
+        return checks.add_check(session, channel_id, status=CheckStatus.ALIVE)
+
+    monkeypatch.setattr(check_routes.catalog, "check_channel", fake_check)
+    return calls
+
+
+def test_list_offers_to_regenerate_screenshots_with_a_warning(web, two):
+    page = web.get("/?q=o").text
+
+    assert 'action="http://127.0.0.1/checks/screenshots?q=o"' in page
+    assert 'hx-confirm="Regenerar las capturas de los 2 canales:' in page
+    assert "Tarda bastante más" in page
+
+
+def test_regenerating_forces_screenshots_of_the_listed_channels(
+    web, two, engine_down, checked, wait_for_checks
+):
+    response = web.post("/checks/screenshots?q=uno", follow_redirects=False)
+    wait_for_checks()
+
+    assert response.headers["location"] == "http://127.0.0.1/?q=uno"
+    assert checked == [(two[0].id, True)]
+
+
+def test_plain_checks_do_not_force_screenshots(web, two, engine_down, checked, wait_for_checks):
+    web.post("/checks")
+    wait_for_checks()
+
+    assert sorted(checked) == sorted([(two[0].id, False), (two[1].id, False)])
+
+
+def test_detail_new_screenshot_forces_one(web, two, engine_down, checked, wait_for_checks):
+    uno, _ = two
+    page = web.get(f"/channels/{uno.id}").text
+    assert "Nueva captura" in page and "hx-confirm=" in page
+
+    response = web.post(f"/channels/{uno.id}/screenshot", follow_redirects=False)
+    wait_for_checks()
+
+    assert response.headers["location"] == f"http://127.0.0.1/channels/{uno.id}"
+    assert checked == [(uno.id, True)]
+    assert web.post("/channels/999/screenshot").status_code == 404
