@@ -4,6 +4,12 @@ Todos los cambios relevantes del proyecto se registran aquí. Formato basado en 
 
 ## [Sin publicar]
 
+## [1.3.0] - 2026-10-08
+
+AceList se distribuye como un ejecutable para Windows: se descarga `AceList-1.3.0-win64.zip`, se descomprime y se abre `AceList.exe`, sin instalar Python. ffmpeg, VLC y Ace Stream siguen siendo externos.
+
+En el ejecutable, los datos van a `%LOCALAPPDATA%\AceList`. Para traer los de la versión con `start.bat` (carpeta `data\`), ver "Si usabas la versión con start.bat" en el README. Sin migraciones nuevas.
+
 ### Agregado
 - Executable-aware paths (#76): `config.resource_dir()` points at the files that ship with AceList (the bundle's `_internal` folder in the Windows executable) and `config.default_data_dir()` keeps the database and screenshots in `%LOCALAPPDATA%\AceList` when running as the executable, so updating the program folder never touches them. Running from source still uses `data/`, and `ACELIST_DATA_DIR` still wins.
 - Launcher (#77): `app/launcher.py` (also `python -m app.launcher`) is what `AceList.exe` runs. It applies the database migrations from the files that ship with AceList, uses port 8000 or the next free one up to 8019 (`--port` to choose), opens the browser once the app answers (`--no-browser` to skip), names the console "AceList" and explains in Spanish what it is doing. A second start finds the running instance through `server.json` in the data folder and only opens the browser. `/health` now says it is AceList and its version, so another program on the same port is never mistaken for it. The version lives in `app.__version__`, which `pyproject.toml` reads.
@@ -80,7 +86,8 @@ Primera versión completa: catálogo, verificación, interfaz web, reproducción
 - Integration tests (#21): `tests/test_integration.py` drives the web app end to end against an engine simulated over HTTP, with a different behavior per Content ID: alive (with a real `capture_screenshot` run on a fake ffmpeg), no peers, unknown hash, engine down, timeout, engine dropping mid-check, unexpected answers, missing ffmpeg, a mixed bulk import and a link that dies. CI now measures coverage with `pytest-cov` and fails below 95% (99% when set). Tests run with their own temporary data directory.
 - Usage documentation and Windows launcher (#22): the README covers requirements, installation, use, channel states, settings, security and troubleshooting. `start.bat` / `start.ps1` create the virtual environment on first run (reinstalling only when `pyproject.toml` changes), apply the migrations, start the server and open the browser once it answers (`-Port`, `-NoBrowser`); if AceList is already running they only open the browser. The server port is configurable with `ACELIST_PORT`.
 
-[Sin publicar]: https://github.com/fabiomb/AceList/compare/v1.2.0...HEAD
+[Sin publicar]: https://github.com/fabiomb/AceList/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/fabiomb/AceList/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/fabiomb/AceList/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/fabiomb/AceList/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/fabiomb/AceList/releases/tag/v1.0.0
