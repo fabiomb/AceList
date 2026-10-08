@@ -24,6 +24,15 @@ def create_category(session: Session, name: str) -> Category:
     return category
 
 
+def find_or_create(session: Session, name: str) -> Category:
+    """The category with this name, ignoring case, created if there is none."""
+    clean = _clean_name(name)
+    existing = session.scalars(
+        select(Category).where(func.lower(Category.name) == clean.lower())
+    ).first()
+    return existing if existing is not None else create_category(session, clean)
+
+
 def get_category(session: Session, category_id: int) -> Category:
     category = session.get(Category, category_id)
     if category is None:

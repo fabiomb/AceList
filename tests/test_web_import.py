@@ -15,7 +15,7 @@ def form(**fields):
 def test_import_page_and_nav_link(web):
     page = web.get("/import").text
 
-    assert "<h1>Importar enlaces</h1>" in page
+    assert "<h1>Importar canales</h1>" in page
     assert 'href="http://127.0.0.1/import"' in page
     assert "<textarea" in page
 
