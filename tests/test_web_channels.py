@@ -186,3 +186,21 @@ def test_last_check_cell_keeps_the_full_date_on_hover(web, db):
 
     local = checked.astimezone().strftime("%Y-%m-%d %H:%M")
     assert f'title="{local}">' in page
+
+
+def test_hash_column_has_a_copy_button(web, db):
+    channels.create_channel(db, title="Uno", content_id=HASH_A)
+
+    page = web.get("/").text
+
+    assert f'data-copy="{HASH_A}" aria-label="Copiar el hash de Uno"' in page
+    assert "/static/app.js" in page
+    assert web.get("/static/app.js").status_code == 200
+
+
+def test_detail_has_a_copy_button(web, db):
+    channel = channels.create_channel(db, title="Uno", content_id=HASH_A)
+
+    page = web.get(f"/channels/{channel.id}").text
+
+    assert f'data-copy="{HASH_A}" aria-label="Copiar el hash"' in page

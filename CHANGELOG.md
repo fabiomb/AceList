@@ -7,6 +7,7 @@ Todos los cambios relevantes del proyecto se registran aquí. Formato basado en 
 ### Cambiado
 - Compact channel list (#45): the creation date column is gone (sorting by it still works through the URL) and the last check shows as relative time ("hace 3 h", the date after a month) with the full date on hover, under a shorter "Verificado" header.
 - Icon actions (#46): play, edit and delete in each list row are now inline SVG icons (`_icons.html`) with accessible names and tooltips.
+- Copy hash button (#47): next to the Content ID in the list and the detail, a button copies the full hash to the clipboard and confirms it with a check mark (and a screen reader announcement). `static/app.js` holds the small script, with a fallback for browsers without the clipboard API.
 
 ## [1.0.0] - 2026-10-07
 

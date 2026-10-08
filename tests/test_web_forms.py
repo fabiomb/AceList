@@ -249,4 +249,3 @@ def test_row_actions_are_icons_with_accessible_names(web, db):
 
     for action in ("Reproducir", "Editar", "Borrar"):
         assert f'aria-label="{action} Uno" title="{action}"' in page
-    assert page.count('<svg class="icon"') == 3

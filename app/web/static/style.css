@@ -384,3 +384,11 @@ form.inline { display: inline; }
 .icon-button:disabled { opacity: 0.6; cursor: progress; }
 .row-actions { white-space: nowrap; }
 .row-actions .icon-button { margin-left: 2px; }
+
+.hash { white-space: nowrap; }
+.copy-button { width: 26px; height: 26px; margin-left: 4px; }
+.copy-button .icon { width: 15px; height: 15px; }
+.copy-button .when-copied { display: none; }
+.copy-button.copied { color: var(--alive-fg); }
+.copy-button.copied .when-idle { display: none; }
+.copy-button.copied .when-copied { display: block; }
