@@ -22,6 +22,10 @@
       <button type="submit" class="button primary">Verificar de nuevo</button>
       <span class="busy" aria-live="polite">Verificando…</span>
     </form>
+    <form method="post" action="{{ url_for('channel_screenshot', channel_id=channel.id) }}"
+          hx-confirm="Se verifica el canal y, si está activo, se saca una captura nueva. Tarda unos segundos más que una verificación normal. ¿Continuar?">
+      <button type="submit" class="button">Nueva captura</button>
+    </form>
     <form class="inline" method="post" action="{{ url_for('channel_play', channel_id=channel.id) }}"
           hx-post="{{ url_for('channel_play', channel_id=channel.id) }}" hx-target="#notices" hx-swap="innerHTML"
           hx-disabled-elt="find button">

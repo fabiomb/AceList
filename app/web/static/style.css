@@ -392,3 +392,5 @@ form.inline { display: inline; }
 .copy-button.copied { color: var(--alive-fg); }
 .copy-button.copied .when-idle { display: none; }
 .copy-button.copied .when-copied { display: block; }
+
+.list-actions { display: flex; gap: 8px; flex-wrap: wrap; }

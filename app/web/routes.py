@@ -203,6 +203,23 @@ def channel_check(
     return _redirect(request, "channel_detail", channel_id=channel_id)
 
 
+@router.post("/channels/{channel_id}/screenshot", name="channel_screenshot")
+def channel_screenshot(
+    request: Request,
+    session: SessionDep,
+    session_factory: SessionFactoryDep,
+    engine_factory: EngineFactoryDep,
+    settings: SettingsDep,
+    runner: CheckRunnerDep,
+    channel_id: int,
+):
+    _get_channel_or_404(session, channel_id)
+    start_checks(
+        runner, [channel_id], session_factory, engine_factory, settings, force_capture=True
+    )
+    return _redirect(request, "channel_detail", channel_id=channel_id)
+
+
 @router.post("/channels/{channel_id}/play", response_class=HTMLResponse, name="channel_play")
 def channel_play(
     request: Request, session: SessionDep, client: EngineDep, settings: SettingsDep, channel_id: int

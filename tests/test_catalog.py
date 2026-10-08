@@ -309,3 +309,54 @@ def test_deleting_a_channel_removes_its_history_and_screenshots(
     assert not screenshot.exists()
     assert checks.latest_checks(session) == {}
     assert channels.list_channels(session) == []
+
+
+# screenshots: only when missing, unless forced
+
+
+def recheck(session, client, tmp_path, channel_id, **kwargs):
+    return catalog.check_channel(
+        session, client, channel_id, settings=FAST, data_dir=tmp_path, **kwargs
+    )
+
+
+def test_a_channel_with_a_screenshot_is_not_captured_again(
+    session, client, engine, shots, tmp_path
+):
+    channel = add(session, client, tmp_path)
+
+    check = recheck(session, client, tmp_path, channel.id)
+
+    assert check.status is CheckStatus.ALIVE
+    assert check.screenshot_path is None
+    assert len(shots.calls) == 1
+
+
+def test_forcing_takes_a_new_screenshot(session, client, engine, shots, tmp_path):
+    channel = add(session, client, tmp_path)
+
+    check = recheck(session, client, tmp_path, channel.id, force_capture=True)
+
+    assert check.screenshot_path is not None
+    assert len(shots.calls) == 2
+
+
+def test_a_channel_whose_screenshot_failed_gets_one_next_time(
+    session, client, engine, shots, tmp_path
+):
+    shots.fail = True
+    channel = add(session, client, tmp_path)
+    shots.fail = False
+
+    check = recheck(session, client, tmp_path, channel.id)
+
+    assert check.screenshot_path is not None
+
+
+def test_a_new_hash_always_gets_a_new_screenshot(session, client, engine, shots, tmp_path):
+    channel = add(session, client, tmp_path, link=HASH_A)
+
+    edit(session, client, tmp_path, channel.id, link=HASH_B)
+
+    assert len(shots.calls) == 2
+    assert shots.calls[1][1] == HASH_B
