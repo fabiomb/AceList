@@ -4,7 +4,7 @@ from enum import StrEnum
 from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.orm import Session, aliased
 
-from app.db.models import Channel, Check, CheckStatus, Resolution
+from app.db.models import Category, Channel, Check, CheckStatus, Resolution
 
 UNCHECKED = "unchecked"  # status filter: channels with no check yet
 UNKNOWN = "unknown"  # resolution filter: channels whose resolution is not known
@@ -35,7 +35,7 @@ _STATUS_RANK = [CheckStatus.ALIVE, CheckStatus.NO_PEERS, CheckStatus.NOT_FOUND, 
 class ChannelQuery:
     """Filters and order for the channel list; `None` means "any"."""
 
-    text: str | None = None  # in the title or the Content ID
+    text: str | None = None  # in the title, the category name or the Content ID
     category_id: int | None = None
     language: str | None = None  # ISO 639-1
     country: str | None = None  # ISO 3166-1 alpha-2
@@ -111,6 +111,7 @@ def _matches_text(text: str):
     content_id = text.lower().removeprefix("acestream://")
     return or_(
         Channel.title.ilike(pattern, escape="\\"),
+        Channel.category.has(Category.name.ilike(pattern, escape="\\")),
         Channel.content_id.contains(content_id, autoescape=True),
     )
 

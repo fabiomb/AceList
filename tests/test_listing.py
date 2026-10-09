@@ -74,6 +74,18 @@ def test_text_matches_title_case_insensitively_or_content_id(db, catalog):
     assert titles(db, text=f"acestream://{HASH_A.upper()}") == ["alfa deportes"]
 
 
+def test_text_also_matches_the_category_name(db, catalog):
+    assert titles(db, text="notic") == ["Beta News"]
+    assert titles(db, text="DEPORTES") == ["alfa deportes"]
+
+
+def test_like_wildcards_in_the_category_name_are_literal(db, catalog):
+    categories.create_category(db, "100% cine")
+
+    assert titles(db, text="0% c") == []
+    assert titles(db, text="cine") == []
+
+
 def test_like_wildcards_in_the_text_are_literal(db, catalog):
     assert titles(db, text="%") == ["Gamma 100%_real"]
     assert titles(db, text="0%_r") == ["Gamma 100%_real"]

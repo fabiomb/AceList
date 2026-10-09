@@ -4,6 +4,12 @@ Todos los cambios relevantes del proyecto se registran aquí. Formato basado en 
 
 ## [Sin publicar]
 
+### Agregado
+- Catalog search in the top bar: every page has a search box ("/" focuses it). While typing, a dropdown shows the first 8 matching channels with their screenshot, category, short hash and status, each linking to its detail, plus a link to all the results in the list; Enter opens the list filtered by the text. Arrow keys walk the matches and Escape or a click elsewhere closes them.
+
+### Cambiado
+- The text filter of the list and the gallery also matches the category name, besides the title and the Content ID.
+
 ## [1.3.0] - 2026-10-08
 
 AceList se distribuye como un ejecutable para Windows: se descarga `AceList-1.3.0-win64.zip`, se descomprime y se abre `AceList.exe`, sin instalar Python. ffmpeg, VLC y Ace Stream siguen siendo externos.
