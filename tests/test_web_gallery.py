@@ -123,7 +123,8 @@ def test_batch_actions_from_the_gallery_come_back_to_it(
 
 def filter_labels(page):
     """Labels of the filter bar, in page order."""
-    form = page[page.index('<form class="filters"') : page.index("</form>")]
+    start = page.index('<form class="filters"')
+    form = page[start : page.index("</form>", start)]
     return re.findall(r'<label for="[^"]+">([^<]+)</label>', form)
 
 

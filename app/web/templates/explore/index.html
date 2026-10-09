@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% from "_icons.html" import copy_button %}
+
+{# Reloading would lose the summary of what was added. #}
+{% set reload_on_checks = false %}
+
+{% block title %}Explorar · AceList{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1>Explorar</h1>
+  <div class="actions">
+    <a class="button" href="{{ url_for('sources_page') }}">Fuentes</a>
+  </div>
+</div>
+
+{% if result %}
+<section class="card import-summary" aria-labelledby="summary-title">
+  <h2 id="summary-title">Resultado</h2>
+  <p>
+    <strong>{{ result.created | length }}</strong> {{ "canal agregado" if result.created | length == 1 else "canales agregados" }}{% if result.duplicates %},
+    <strong>{{ result.duplicates | length }}</strong> ya {{ "estaba" if result.duplicates | length == 1 else "estaban" }} en el catálogo{% endif %}.
+    {% if result.created and not engine_down %}Se están verificando en segundo plano.{% endif %}
+  </p>
+  {% if engine_down %}
+  <p class="notice notice-error" role="alert">Ace Stream no responde: los canales nuevos quedan sin verificar. Ábrelo y usa «Verificar» en el listado.</p>
+  {% endif %}
+  {% if result.created %}
+  <ul class="import-list">
+    {% for channel in result.created %}
+    <li><a href="{{ url_for('channel_detail', channel_id=channel.id) }}">{{ channel.title }}</a> <code>{{ channel.content_id | short_hash }}</code></li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</section>
+{% endif %}
+
+{% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
+
+{% if not sources %}
+<section class="empty-state">
+  <p class="empty-title">Todavía no hay fuentes de canales.</p>
+  <p>Una fuente es una lista en la web: M3U, enlaces <code>acestream://</code> o una exportación de AceList.
+    AceList la descarga y aquí puedes buscar en ella y agregar los canales que elijas.</p>
+  <p><a class="button primary" href="{{ url_for('sources_page') }}">Agregar una fuente</a></p>
+</section>
+{% elif not has_enabled %}
+<section class="empty-state">
+  <p class="empty-title">Todas las fuentes están desactivadas.</p>
+  <p><a class="button" href="{{ url_for('sources_page') }}">Ir a las fuentes</a></p>
+</section>
+{% else %}
+<form class="filters" method="get" action="{{ url_for('explore') }}" role="search">
+  <div class="field field-search">
+    <label for="x-q">Buscar</label>
+    <input id="x-q" name="q" type="search" placeholder="Nombre, grupo o Content ID" value="{{ query.text or '' }}">
+  </div>
+  <div class="field">
+    <label for="x-source">Fuente</label>
+    <select id="x-source" name="source">
+      <option value="">Todas</option>
+      {% for source in sources if source.enabled %}
+      <option value="{{ source.id }}"{% if query.source_id == source.id %} selected{% endif %}>{{ source.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <label class="check-field"><input type="checkbox" name="new" value="1"{% if query.only_new %} checked{% endif %}> Solo los que no tengo</label>
+  <div class="filter-actions">
+    <button type="submit" class="button">Buscar</button>
+    {% if query.text or query.source_id or query.only_new %}<a href="{{ url_for('explore') }}">Quitar filtros</a>{% endif %}
+  </div>
+</form>
+
+<p class="result-count">
+  {{ found.total }} {{ "canal" if found.total == 1 else "canales" }}
+  {%- if found.total > found.rows | length %}: se muestran los primeros {{ found.rows | length }}; afina la búsqueda para ver el resto{% endif %}.
+</p>
+
+{% if found.rows %}
+<form method="post" action="{{ url_for('explore_add') }}" hx-disabled-elt="find button[type=submit]">
+  <input type="hidden" name="q" value="{{ query.text or '' }}">
+  <input type="hidden" name="source" value="{{ query.source_id or '' }}">
+  <input type="hidden" name="new" value="{{ '1' if query.only_new else '' }}">
+  <div class="table-wrap">
+    <table class="channels explore">
+      <thead>
+        <tr>
+          <th scope="col"><input type="checkbox" data-check-all="entry" aria-label="Elegir todos los que no están en el catálogo"></th>
+          <th scope="col">Nombre</th>
+          <th scope="col">Grupo</th>
+          <th scope="col">Hash</th>
+          <th scope="col">Fuente</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in found.rows %}
+        {% set entry = row.entry %}
+        <tr{% if row.channel %} class="in-catalog"{% endif %}>
+          <td>
+            {% if row.channel %}
+            <a href="{{ url_for('channel_detail', channel_id=row.channel.id) }}" class="catalog-tag" title="Ya está en el catálogo como «{{ row.channel.title }}»">En el catálogo</a>
+            {% else %}
+            <input type="checkbox" name="entry" value="{{ entry.id }}" id="entry-{{ entry.id }}" aria-label="Elegir {{ entry.title or entry.content_id }}">
+            {% endif %}
+          </td>
+          <td class="title">
+            {% if row.channel %}{{ entry.title or "Sin nombre" }}
+            {% else %}<label for="entry-{{ entry.id }}"{% if not entry.title %} class="pending-title"{% endif %}>{{ entry.title or "Sin nombre" }}</label>{% endif %}
+          </td>
+          <td>{{ entry.group or "—" }}</td>
+          <td class="hash"><code title="{{ entry.content_id }}">{{ entry.content_id | short_hash }}</code>{{ copy_button(entry.content_id, "Copiar el hash de " ~ (entry.title or entry.content_id)) }}</td>
+          <td>{{ row.source_name }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="explore-add">
+    <div class="field">
+      <label for="category_id">Categoría para los agregados</label>
+      <select id="category_id" name="category_id">
+        <option value="">Sin categoría</option>
+        {% for category in categories %}
+        <option value="{{ category.id }}">{{ category.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="new_category">o nueva categoría</label>
+      <input id="new_category" name="new_category" type="text" maxlength="100">
+    </div>
+    <div class="actions">
+      <button type="submit" class="button primary">Agregar los elegidos</button>
+      <span class="busy" aria-live="polite">Agregando…</span>
+    </div>
+  </div>
+  <p class="hint">Los canales agregados se verifican en segundo plano, como en «Importar». Sin nombre en la lista, se usa el que publica el stream.</p>
+</form>
+{% elif query.text or query.source_id or query.only_new %}
+<p class="empty-state">Ningún canal de las fuentes coincide con la búsqueda.</p>
+{% else %}
+<p class="empty-state">Las fuentes activas no tienen canales todavía. Actualízalas en <a href="{{ url_for('sources_page') }}">Fuentes</a>.</p>
+{% endif %}
+{% endif %}
+{% endblock %}

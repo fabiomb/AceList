@@ -165,6 +165,30 @@ def channel_list(request: Request, session: SessionDep):
     return templates.TemplateResponse(request, "channels/list.html", context)
 
 
+# Enough to spot a channel while typing; the rest are one click away in the list.
+SUGGEST_LIMIT = 8
+
+
+@router.get("/search/suggest", response_class=HTMLResponse, name="channel_suggest")
+def channel_suggest(request: Request, session: SessionDep, q: str = ""):
+    """Matches for the top bar search box, as a dropdown loaded by htmx while typing."""
+    text = q.strip()
+    if not text:
+        return HTMLResponse("")
+    matches = listing.search_channels(session, ChannelQuery(text=text))
+    shots = checks.latest_screenshots(session)
+    rows = [
+        ChannelRow(channel, check, screenshot_url(request, shots.get(channel.id)))
+        for channel, check in matches[:SUGGEST_LIMIT]
+    ]
+    all_url = request.url_for("channel_list").include_query_params(q=text)
+    return templates.TemplateResponse(
+        request,
+        "channels/_suggest.html",
+        {"rows": rows, "total": len(matches), "text": text, "all_url": all_url},
+    )
+
+
 @dataclass(frozen=True)
 class GallerySection:
     title: str

@@ -1,0 +1,30 @@
+{# Dropdown of the top bar search box (see base.html). Expects `rows`, `total`, `text` and `all_url`. #}
+{% if rows %}
+<ul class="suggest-list" role="listbox" aria-label="Canales que coinciden">
+  {% for row in rows %}
+  {% set channel = row.channel %}
+  {% set check = row.check %}
+  <li role="option">
+    <a class="suggest-item" href="{{ url_for('channel_detail', channel_id=channel.id) }}">
+      {% if row.screenshot_url %}
+      <img src="{{ row.screenshot_url }}" alt="" width="64" height="36" loading="lazy">
+      {% else %}
+      <span class="no-thumb" aria-hidden="true"></span>
+      {% endif %}
+      <span class="suggest-text">
+        <span class="suggest-title{% if channel.title_pending %} pending-title{% endif %}">{{ channel.title }}</span>
+        <span class="suggest-meta">{{ channel.category.name if channel.category else "Sin categoría" }} · <code>{{ channel.content_id | short_hash }}</code></span>
+      </span>
+      {% if check %}
+      <span class="status status-{{ check.status.value }}">{{ status_labels[check.status] }}</span>
+      {% else %}
+      <span class="status status-unchecked">Sin verificar</span>
+      {% endif %}
+    </a>
+  </li>
+  {% endfor %}
+</ul>
+<a class="suggest-all" href="{{ all_url }}">{% if total == 1 %}Ver el resultado en el listado{% else %}Ver los {{ total }} resultados en el listado{% endif %}</a>
+{% else %}
+<p class="suggest-empty">Ningún canal coincide con «{{ text }}».</p>
+{% endif %}

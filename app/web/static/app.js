@@ -47,4 +47,65 @@
       () => announce("No se pudo copiar")
     );
   });
+
+  // Top bar search: "/" focuses it, arrows walk the matches, Escape or a click elsewhere closes them.
+  function searchBox() {
+    return document.getElementById("topbar-q");
+  }
+
+  function suggestions() {
+    return document.getElementById("topbar-suggest");
+  }
+
+  function closeSuggestions() {
+    const box = suggestions();
+    if (box) box.innerHTML = "";
+  }
+
+  function isTyping(target) {
+    return target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
+  }
+
+  document.addEventListener("keydown", (event) => {
+    const input = searchBox();
+    if (!input) return;
+    if (event.key === "/" && !isTyping(event.target) && !event.ctrlKey && !event.metaKey) {
+      event.preventDefault();
+      input.focus();
+      input.select();
+      return;
+    }
+    const box = suggestions();
+    if (!box || (!box.contains(event.target) && event.target !== input)) return;
+    const items = Array.from(box.querySelectorAll(".suggest-item, .suggest-all"));
+    const index = items.indexOf(document.activeElement);
+    if (event.key === "Escape") {
+      closeSuggestions();
+      input.focus();
+    } else if (event.key === "ArrowDown" && items.length) {
+      event.preventDefault();
+      items[Math.min(index + 1, items.length - 1)].focus();
+    } else if (event.key === "ArrowUp" && index >= 0) {
+      event.preventDefault();
+      (index === 0 ? input : items[index - 1]).focus();
+    }
+  });
+
+  document.addEventListener("click", (event) => {
+    const form = event.target.closest(".topbar-search");
+    if (!form) closeSuggestions();
+  });
+
+  // "Choose all" boxes: data-check-all names the checkboxes of its form it toggles.
+  document.addEventListener("change", (event) => {
+    const master = event.target.closest("[data-check-all]");
+    if (!master || !master.form) return;
+    const name = master.dataset.checkAll;
+    master.form.querySelectorAll(`input[type=checkbox][name="${name}"]`).forEach((box) => {
+      box.checked = master.checked;
+    });
+  });
+
+  // A new page (hx-boost) starts with the dropdown closed.
+  document.addEventListener("htmx:beforeHistorySave", closeSuggestions);
 })();

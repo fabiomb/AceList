@@ -14,7 +14,7 @@ from app.config import DATA_DIR
 from app.db.session import make_engine, make_session_factory
 from app.services.batch import CheckRunner
 from app.services.screenshots import SCREENSHOTS_SUBDIR
-from app.web import check_routes, engine_routes, import_routes, settings_routes
+from app.web import check_routes, engine_routes, explore_routes, import_routes, settings_routes
 from app.web.flash import clear_shown_flash
 from app.web.routes import router
 from app.web.templating import STATIC_DIR
@@ -81,6 +81,7 @@ app.include_router(settings_routes.router)
 app.include_router(check_routes.router)
 app.include_router(import_routes.router)
 app.include_router(engine_routes.router)
+app.include_router(explore_routes.router)
 
 
 @app.get("/health")

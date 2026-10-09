@@ -17,9 +17,20 @@
     <nav>
       <a href="{{ url_for('channel_list') }}">Canales</a>
       <a href="{{ url_for('channel_gallery') }}">Galería</a>
+      <a href="{{ url_for('explore') }}">Explorar</a>
       <a href="{{ url_for('import_page') }}">Importar</a>
       <a href="{{ url_for('settings') }}">Ajustes</a>
     </nav>
+    {# Enter opens the list filtered by the text; while typing, htmx shows the first matches. #}
+    <form class="topbar-search" method="get" action="{{ url_for('channel_list') }}" role="search">
+      <label for="topbar-q" class="visually-hidden">Buscar en el catálogo</label>
+      <input id="topbar-q" name="q" type="search" placeholder="Buscar canales…  /"
+             autocomplete="off" aria-controls="topbar-suggest" aria-describedby="topbar-q-help"
+             hx-get="{{ url_for('channel_suggest') }}" hx-trigger="input changed delay:250ms"
+             hx-target="#topbar-suggest" hx-swap="innerHTML" hx-sync="this:replace">
+      <span id="topbar-q-help" class="visually-hidden">Título, categoría o Content ID. Enter muestra todos los resultados.</span>
+      <div id="topbar-suggest" class="suggest" aria-live="polite"></div>
+    </form>
     {% include "_engine_status.html" %}
   </header>
   <main class="content">
