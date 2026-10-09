@@ -4,9 +4,14 @@ Todos los cambios relevantes del proyecto se registran aquí. Formato basado en 
 
 ## [Sin publicar]
 
+## [1.4.0] - 2026-10-09
+
+Buscador en la barra superior y explorador de fuentes de canales (contribución de @ncmartin77, #88).
+
+Incluye la migración `0004` (tablas de fuentes), que se aplica sola al abrir AceList con el ejecutable o con `start.bat`.
+
 ### Agregado
 - Catalog search in the top bar: every page has a search box ("/" focuses it). While typing, a dropdown shows the first 8 matching channels with their screenshot, category, short hash and status, each linking to its detail, plus a link to all the results in the list; Enter opens the list filtered by the text. Arrow keys walk the matches and Escape or a click elsewhere closes them.
-
 - Channel sources and the Explore page: "Explorar → Fuentes" keeps a list of web addresses (M3U, plain links or AceList exports, up to 5 MB and 5000 channels each) that AceList downloads when one is added and on "Actualizar" / "Actualizar todas", storing what it found so exploring never waits for the network. A failed download keeps the previous channels and shows why; sources can be disabled or deleted. "Explorar" searches the channels of the enabled sources by name, M3U `group-title` or Content ID, marks those already in the catalog (with "Solo los que no tengo" to hide them), and adds the chosen ones in an optional category, checking them in the background like an import. AceList ships with no sources. New tables `source` and `source_entry` (migration 0004).
 
 ### Cambiado
@@ -94,7 +99,8 @@ Primera versión completa: catálogo, verificación, interfaz web, reproducción
 - Integration tests (#21): `tests/test_integration.py` drives the web app end to end against an engine simulated over HTTP, with a different behavior per Content ID: alive (with a real `capture_screenshot` run on a fake ffmpeg), no peers, unknown hash, engine down, timeout, engine dropping mid-check, unexpected answers, missing ffmpeg, a mixed bulk import and a link that dies. CI now measures coverage with `pytest-cov` and fails below 95% (99% when set). Tests run with their own temporary data directory.
 - Usage documentation and Windows launcher (#22): the README covers requirements, installation, use, channel states, settings, security and troubleshooting. `start.bat` / `start.ps1` create the virtual environment on first run (reinstalling only when `pyproject.toml` changes), apply the migrations, start the server and open the browser once it answers (`-Port`, `-NoBrowser`); if AceList is already running they only open the browser. The server port is configurable with `ACELIST_PORT`.
 
-[Sin publicar]: https://github.com/fabiomb/AceList/compare/v1.3.0...HEAD
+[Sin publicar]: https://github.com/fabiomb/AceList/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/fabiomb/AceList/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/fabiomb/AceList/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/fabiomb/AceList/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/fabiomb/AceList/compare/v1.0.0...v1.1.0
