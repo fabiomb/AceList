@@ -96,6 +96,16 @@
     if (!form) closeSuggestions();
   });
 
+  // "Choose all" boxes: data-check-all names the checkboxes of its form it toggles.
+  document.addEventListener("change", (event) => {
+    const master = event.target.closest("[data-check-all]");
+    if (!master || !master.form) return;
+    const name = master.dataset.checkAll;
+    master.form.querySelectorAll(`input[type=checkbox][name="${name}"]`).forEach((box) => {
+      box.checked = master.checked;
+    });
+  });
+
   // A new page (hx-boost) starts with the dropdown closed.
   document.addEventListener("htmx:beforeHistorySave", closeSuggestions);
 })();

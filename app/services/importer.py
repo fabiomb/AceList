@@ -12,6 +12,8 @@ from app.services.naming import placeholder_title
 
 MAX_LINES = 2000
 _TITLE_LENGTH = 200  # the column length
+_GROUP_LENGTH = 100  # SourceEntry.group
+_GROUP_TITLE = re.compile(r'group-title="([^"]*)"', re.IGNORECASE)
 
 # A Content ID anywhere in the line, bare or as an acestream:// link, in any case.
 _LINK = re.compile(r"(?:acestream://)?(?<![0-9a-f])([0-9a-f]{40})(?![0-9a-f])", re.IGNORECASE)
@@ -24,6 +26,7 @@ class Entry:
     line: int  # 1-based, as the user sees it
     content_id: str
     title: str | None  # None: take the stream's name
+    group: str | None = None  # an M3U list's `group-title`, if any
 
 
 class Reason(StrEnum):
@@ -60,25 +63,28 @@ def parse_links(text: str) -> tuple[list[Entry], list[Rejected]]:
     entries: list[Entry] = []
     invalid: list[Rejected] = []
     pending_title: str | None = None
+    pending_group: str | None = None
     for number, raw in enumerate(text.splitlines(), start=1):
         line = raw.strip()
         if not line:
             continue
         if line.upper().startswith("#EXTINF"):
             pending_title = _extinf_title(line)
+            pending_group = _extinf_group(line)
             continue
         if line.startswith("#"):
             continue
         match = _LINK.search(line)
         if match is None:
             invalid.append(Rejected(number, line, Reason.NO_LINK))
-            pending_title = None
+            pending_title = pending_group = None
             continue
         content_id = match.group(1).lower()
         around = (line[: match.start()] + " " + line[match.end() :]).strip(_SEPARATORS)
         title = pending_title or around or None
-        entries.append(Entry(number, content_id, title[:_TITLE_LENGTH] if title else None))
-        pending_title = None
+        group = pending_group[:_GROUP_LENGTH] if pending_group else None
+        entries.append(Entry(number, content_id, title[:_TITLE_LENGTH] if title else None, group))
+        pending_title = pending_group = None
     return entries, invalid
 
 
@@ -144,3 +150,8 @@ def _extinf_title(line: str) -> str | None:
         elif char == "," and not quoted:
             return line[index + 1 :].strip() or None
     return None
+
+
+def _extinf_group(line: str) -> str | None:
+    match = _GROUP_TITLE.search(line)
+    return (match.group(1).strip() or None) if match else None

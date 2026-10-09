@@ -628,3 +628,19 @@ form.inline { display: inline; }
 .status-cell { white-space: nowrap; }
 .recheck-button { width: 26px; height: 26px; margin-left: 4px; }
 .recheck-button .icon { width: 15px; height: 15px; }
+
+/* Explore: channels found in the sources, and the sources themselves. */
+.check-field { display: flex; align-items: center; gap: 6px; padding-bottom: 8px; font-size: 14px; }
+.explore tr.in-catalog td { color: var(--muted); }
+.catalog-tag { font-size: 12px; white-space: nowrap; }
+.explore .title label { cursor: pointer; }
+.explore .title label.pending-title { color: var(--muted); font-style: italic; }
+.explore-add { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px; margin: 16px 0 8px; }
+.explore-add .field { margin: 0; flex: 0 1 240px; }
+.explore-add .actions { margin: 0; }
+.sources-intro { max-width: 720px; margin-bottom: 16px; }
+.sources .url code { font-size: 12px; }
+.sources tr.disabled td { color: var(--muted); }
+.sources .row-actions { display: flex; gap: 6px; justify-content: flex-end; }
+.sources .row-actions form { margin: 0; }
+.sources td { white-space: normal; }

@@ -1,7 +1,16 @@
 from datetime import datetime
 from enum import StrEnum
 
-from sqlalchemy import CheckConstraint, Enum, ForeignKey, Index, String, false
+from sqlalchemy import (
+    CheckConstraint,
+    Enum,
+    ForeignKey,
+    Index,
+    String,
+    UniqueConstraint,
+    false,
+    true,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, UTCDateTime, utcnow
@@ -127,3 +136,42 @@ class Setting(Base):
 
     key: Mapped[str] = mapped_column(String(100), primary_key=True)
     value: Mapped[str] = mapped_column(String(1000))
+
+
+class Source(Base):
+    """A channel list on the web (M3U, links or an AceList export) to explore and pick from."""
+
+    __tablename__ = "source"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), unique=True)
+    url: Mapped[str] = mapped_column(String(1000))
+    enabled: Mapped[bool] = mapped_column(default=True, server_default=true())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    # Outcome of the last refresh: when, how many channels it brought, or why it failed.
+    fetched_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    entry_count: Mapped[int | None]
+    error_message: Mapped[str | None] = mapped_column(String(500))
+
+    entries: Mapped[list["SourceEntry"]] = relationship(
+        back_populates="source", cascade="all, delete-orphan", passive_deletes=True
+    )
+
+
+class SourceEntry(Base):
+    """A channel read from a source on its last refresh; replaced on the next one."""
+
+    __tablename__ = "source_entry"
+    __table_args__ = (
+        UniqueConstraint("source_id", "content_id"),
+        Index("ix_source_entry_content_id", "content_id"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    source_id: Mapped[int] = mapped_column(ForeignKey("source.id", ondelete="CASCADE"))
+    content_id: Mapped[str] = mapped_column(String(40))
+    title: Mapped[str | None] = mapped_column(String(200))  # None: the list gave no name
+    group: Mapped[str | None] = mapped_column(String(100))  # the list's own grouping, if any
+    position: Mapped[int]  # order in the list
+
+    source: Mapped[Source] = relationship(back_populates="entries")

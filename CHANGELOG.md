@@ -7,6 +7,8 @@ Todos los cambios relevantes del proyecto se registran aquí. Formato basado en 
 ### Agregado
 - Catalog search in the top bar: every page has a search box ("/" focuses it). While typing, a dropdown shows the first 8 matching channels with their screenshot, category, short hash and status, each linking to its detail, plus a link to all the results in the list; Enter opens the list filtered by the text. Arrow keys walk the matches and Escape or a click elsewhere closes them.
 
+- Channel sources and the Explore page: "Explorar → Fuentes" keeps a list of web addresses (M3U, plain links or AceList exports, up to 5 MB and 5000 channels each) that AceList downloads when one is added and on "Actualizar" / "Actualizar todas", storing what it found so exploring never waits for the network. A failed download keeps the previous channels and shows why; sources can be disabled or deleted. "Explorar" searches the channels of the enabled sources by name, M3U `group-title` or Content ID, marks those already in the catalog (with "Solo los que no tengo" to hide them), and adds the chosen ones in an optional category, checking them in the background like an import. AceList ships with no sources. New tables `source` and `source_entry` (migration 0004).
+
 ### Cambiado
 - The text filter of the list and the gallery also matches the category name, besides the title and the Content ID.
 
