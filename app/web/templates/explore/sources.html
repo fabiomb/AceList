@@ -2,12 +2,6 @@
 
 {% block title %}Fuentes · AceList{% endblock %}
 
-{% macro field_error(name) %}
-  {% if errors[name] %}<p class="field-error" id="{{ name }}-error">{{ errors[name] }}</p>{% endif %}
-{% endmacro %}
-
-{% macro invalid(name) %}{% if errors[name] %} aria-invalid="true" aria-describedby="{{ name }}-error"{% endif %}{% endmacro %}
-
 {% block content %}
 <p class="breadcrumb"><a href="{{ url_for('explore') }}">← Explorar</a></p>
 <div class="page-head">
@@ -21,9 +15,10 @@
 </div>
 
 <p class="hint sources-intro">
-  Listas en la web que AceList descarga para que busques canales en ellas: M3U (el grupo de
+  Listas en la web o archivos de tu equipo en los que buscar canales: M3U (el grupo de
   <code>group-title</code> se muestra), texto con enlaces <code>acestream://</code> o una exportación
-  de AceList. Se descargan al agregarlas y cuando pulsas «Actualizar»; hasta 5 MB y 5000 canales por fuente.
+  de AceList. Las de la web se descargan al agregarlas y cuando pulsas «Actualizar»; un archivo se lee
+  al subirlo. Hasta 5 MB y 5000 canales por fuente.
 </p>
 
 {% if sources %}
@@ -44,16 +39,18 @@
         <td class="title">
           {% if source.enabled %}<a href="{{ url_for('explore') }}?source={{ source.id }}">{{ source.name }}</a>{% else %}{{ source.name }} <span class="status status-unchecked">Desactivada</span>{% endif %}
         </td>
-        <td class="url"><code title="{{ source.url }}">{{ source.url | truncate(60) }}</code></td>
+        <td class="url">{% if source.url %}<code title="{{ source.url }}">{{ source.url | truncate(60) }}</code>{% else %}<span class="hint">Archivo local</span>{% endif %}</td>
         <td class="num">{{ source.entry_count if source.entry_count is not none else "—" }}</td>
         <td>
           {% if source.fetched_at %}<span title="{{ source.fetched_at | localtime }}">{{ source.fetched_at | ago }}</span>{% else %}Nunca{% endif %}
           {% if source.error_message %}<br><span class="status status-error" title="{{ source.error_message }}">Error</span> <span class="hint">{{ source.error_message }}</span>{% endif %}
         </td>
         <td class="row-actions">
+          {% if source.url %}
           <form method="post" action="{{ url_for('source_refresh', source_id=source.id) }}" hx-disabled-elt="find button">
             <button type="submit" class="button">Actualizar</button>
           </form>
+          {% endif %}
           <form method="post" action="{{ url_for('source_toggle', source_id=source.id) }}">
             <button type="submit" class="button">{{ "Desactivar" if source.enabled else "Activar" }}</button>
           </form>
@@ -71,20 +68,5 @@
 
 <h2>Agregar una fuente</h2>
 {% if errors %}<p class="form-error" role="alert">Revisa los campos marcados.</p>{% endif %}
-<form class="card form" method="post" action="{{ url_for('source_create') }}" hx-disabled-elt="find button[type=submit]">
-  <div class="field">
-    <label for="name">Nombre</label>
-    <input id="name" name="name" type="text" maxlength="100" required value="{{ values.name or '' }}"{{ invalid("name") }}>
-    {{ field_error("name") }}
-  </div>
-  <div class="field">
-    <label for="url">Dirección</label>
-    <input id="url" name="url" type="url" maxlength="1000" required placeholder="https://…/lista.m3u" value="{{ values.url or '' }}"{{ invalid("url") }}>
-    {{ field_error("url") }}
-  </div>
-  <div class="actions">
-    <button type="submit" class="button primary">Agregar y descargar</button>
-    <span class="busy" aria-live="polite">Descargando…</span>
-  </div>
-</form>
+{% include "explore/_source_form.html" %}
 {% endblock %}

@@ -644,3 +644,15 @@ form.inline { display: inline; }
 .sources .row-actions { display: flex; gap: 6px; justify-content: flex-end; }
 .sources .row-actions form { margin: 0; }
 .sources td { white-space: normal; }
+
+/* "Add a source": a list file can be dropped on the zone, or anywhere on the page. */
+.dropzone {
+  padding: 16px;
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  text-align: center;
+}
+.dropzone .hint { margin: 8px 0 0; }
+.dropzone.dragging { border-color: var(--accent); background: var(--none-bg); }
+.add-source { margin-top: 24px; }
+.add-source > summary { cursor: pointer; font-size: 17px; font-weight: 600; margin-bottom: 12px; }

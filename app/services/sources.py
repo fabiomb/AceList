@@ -1,11 +1,13 @@
-"""Channel sources: lists on the web (M3U, links, AceList exports) to explore and pick from.
+"""Channel sources: lists (M3U, links, AceList exports) to explore and pick from.
 
-A refresh downloads the list and stores what it found in `source_entry`, so exploring and
-searching never wait for the network. AceList ships with no sources: the user adds them.
+A source is a list on the web or a file the user uploaded. A refresh downloads a web list
+and stores what it found in `source_entry`, so exploring and searching never wait for the
+network; a file is read once, when it is uploaded. AceList ships with no sources.
 """
 
 from collections.abc import Iterable
 from dataclasses import dataclass
+from pathlib import PurePath
 from urllib.parse import urlsplit
 
 import httpx
@@ -75,14 +77,19 @@ def get_source(session: Session, source_id: int) -> Source:
     return source
 
 
-def normalize_source(name: str, url: str) -> tuple[str, str]:
-    """Validated name and URL; raises `ValidationError` naming the bad field."""
+def _normalize_name(name: str) -> str:
     name = " ".join(name.split())
-    url = url.strip()
     if not name:
         raise ValidationError("name: required")
     if len(name) > _NAME_LENGTH:
         raise ValidationError(f"name: at most {_NAME_LENGTH} characters")
+    return name
+
+
+def normalize_source(name: str, url: str) -> tuple[str, str]:
+    """Validated name and URL; raises `ValidationError` naming the bad field."""
+    name = _normalize_name(name)
+    url = url.strip()
     parts = urlsplit(url)
     if parts.scheme not in ("http", "https") or not parts.netloc:
         raise ValidationError("url: must be an http:// or https:// address")
@@ -100,6 +107,30 @@ def create_source(session: Session, *, name: str, url: str) -> Source:
     except IntegrityError as exc:
         session.rollback()
         raise DuplicateError(f"a source named {name!r} already exists") from exc
+    return source
+
+
+def add_file_source(session: Session, *, name: str, filename: str, data: bytes) -> Source:
+    """A source read from an uploaded file, named after the file unless `name` is given.
+
+    Uploading again under the name of a file source replaces its entries. A file that is
+    too big or has no Ace Stream links raises `SourceFetchError` and changes nothing.
+    """
+    name = _normalize_name(name or PurePath(filename.replace("\\", "/")).stem)
+    if len(data) > MAX_SOURCE_BYTES:
+        raise SourceFetchError(f"El archivo supera los {MAX_SOURCE_BYTES // (1024 * 1024)} MB.")
+    entries = parse_source(decode_text(data))
+    if not entries:
+        raise SourceFetchError("El archivo no tiene enlaces de Ace Stream.")
+    source = session.scalar(select(Source).where(Source.name == name))
+    if source is not None and source.url is not None:
+        raise DuplicateError(f"a web source named {name!r} already exists")
+    if source is None:
+        source = Source(name=name, url=None)
+        session.add(source)
+        session.flush()
+    source.fetched_at = utcnow()
+    _store_entries(session, source, entries)
     return source
 
 
@@ -181,19 +212,26 @@ def fetch_text(client: httpx.Client, url: str) -> str:
         raise SourceFetchError("No respondió a tiempo.") from exc
     except httpx.HTTPError as exc:
         raise SourceFetchError(f"No se pudo descargar: {exc}") from exc
+    return decode_text(bytes(data))
+
+
+def decode_text(data: bytes) -> str:
     try:
-        return bytes(data).decode("utf-8-sig")
+        return data.decode("utf-8-sig")
     except UnicodeDecodeError:
         # Old M3U lists are often Latin-1; any byte decodes, so this never fails.
-        return bytes(data).decode("latin-1")
+        return data.decode("latin-1")
 
 
 def refresh_source(session: Session, source: Source, client: httpx.Client) -> Source:
     """Downloads the source and replaces its entries.
 
     On failure the previous entries stay, so a list that is down for a while can still
-    be explored; the error is recorded and shown next to the source.
+    be explored; the error is recorded and shown next to the source. A file source has
+    nothing to download and is left as it is.
     """
+    if source.url is None:
+        return source
     source.fetched_at = utcnow()
     try:
         entries = parse_source(fetch_text(client, source.url))
@@ -201,6 +239,11 @@ def refresh_source(session: Session, source: Source, client: httpx.Client) -> So
         source.error_message = str(exc)[:_ERROR_LENGTH]
         session.commit()
         return source
+    _store_entries(session, source, entries)
+    return source
+
+
+def _store_entries(session: Session, source: Source, entries: list[ParsedEntry]) -> None:
     session.execute(delete(SourceEntry).where(SourceEntry.source_id == source.id))
     session.add_all(
         SourceEntry(
@@ -215,14 +258,13 @@ def refresh_source(session: Session, source: Source, client: httpx.Client) -> So
     source.entry_count = len(entries)
     source.error_message = None if entries else "La lista no tiene enlaces de Ace Stream."
     session.commit()
-    return source
 
 
 def refresh_sources(session: Session, client: httpx.Client) -> list[Source]:
-    """Refreshes every enabled source, one after the other."""
+    """Refreshes every enabled web source, one after the other."""
     refreshed = []
     for source in list_sources(session):
-        if source.enabled:
+        if source.enabled and source.url is not None:
             refreshed.append(refresh_source(session, source, client))
     return refreshed
 

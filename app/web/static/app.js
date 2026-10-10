@@ -108,4 +108,66 @@
 
   // A new page (hx-boost) starts with the dropdown closed.
   document.addEventListener("htmx:beforeHistorySave", closeSuggestions);
+
+  // A list file dropped anywhere on a page with a drop zone goes into its file field.
+  let dragDepth = 0;
+
+  function dropzone(event) {
+    const types = event.dataTransfer ? Array.from(event.dataTransfer.types) : [];
+    return types.includes("Files") ? document.querySelector("[data-dropzone]") : null;
+  }
+
+  document.addEventListener("dragenter", (event) => {
+    const zone = dropzone(event);
+    if (!zone) return;
+    dragDepth += 1;
+    const details = zone.closest("details");
+    if (details) details.open = true;
+    zone.classList.add("dragging");
+  });
+
+  document.addEventListener("dragover", (event) => {
+    if (!dropzone(event)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+  });
+
+  document.addEventListener("dragleave", (event) => {
+    const zone = dropzone(event);
+    if (!zone) return;
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (dragDepth === 0) zone.classList.remove("dragging");
+  });
+
+  document.addEventListener("drop", (event) => {
+    const zone = dropzone(event);
+    if (!zone) return;
+    event.preventDefault();
+    dragDepth = 0;
+    zone.classList.remove("dragging");
+    const file = event.dataTransfer.files[0];
+    const input = zone.querySelector("input[type=file]");
+    if (!file || !input) return;
+    const chosen = new DataTransfer();
+    chosen.items.add(file);
+    input.files = chosen.files;
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    input.form.querySelector("button[type=submit]").focus();
+  });
+
+  document.addEventListener("change", (event) => {
+    const input = event.target;
+    const zone = input.closest("[data-dropzone]");
+    if (!zone || input.type !== "file") return;
+    const label = zone.querySelector("[data-dropzone-label]");
+    if (!label.dataset.empty) label.dataset.empty = label.innerHTML;
+    const file = input.files[0];
+    if (file) {
+      label.textContent = `Archivo elegido: ${file.name}. Pulsa «Agregar».`;
+    } else {
+      label.innerHTML = label.dataset.empty;
+    }
+    const name = input.form.elements.namedItem("name");
+    if (name) name.placeholder = file ? file.name.replace(/\.[^.]*$/, "") : "";
+  });
 })();

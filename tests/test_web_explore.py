@@ -179,3 +179,42 @@ def test_adding_nothing_or_to_a_missing_category_is_rejected(web, db, listed):
 
     assert nothing.status_code == 422 and "Elige al menos un canal." in nothing.text
     assert missing.status_code == 422 and "La categoría elegida no existe." in missing.text
+
+
+def upload(name, content, filename="mis canales.m3u8"):
+    return {
+        "data": {"name": name, "url": ""},
+        "files": {"file": (filename, content, "audio/x-mpegurl")},
+    }
+
+
+def test_explore_offers_the_source_form_with_a_drop_zone(web, db):
+    page = web.get("/explore").text
+
+    assert 'enctype="multipart/form-data"' in page and "data-dropzone" in page
+    assert '<details class="add-source" open>' in page
+
+
+def test_adding_a_file_source(web, db, respx_mock):
+    response = web.post("/explore/sources", **upload("", M3U))
+
+    assert response.history[0].status_code == 303
+    page = response.text
+    assert ">mis canales<" in page and "Archivo local" in page
+    assert '<td class="num">2</td>' in page
+    source_id = db.query(Source).one().id
+    assert f"/explore/sources/{source_id}/refresh" not in page  # nothing to download
+    assert "Uno HD" in web.get("/explore").text
+
+
+def test_file_source_errors(web, db, respx_mock):
+    respx_mock.get(URL).respond(text=M3U)
+    web.post("/explore/sources", data={"name": "Lista", "url": URL})
+
+    empty = web.post("/explore/sources", **upload("", "#EXTM3U\n"))
+    taken = web.post("/explore/sources", **upload("Lista", M3U))
+    unnamed = web.post("/explore/sources", **upload("", M3U, filename="   .m3u"))
+
+    assert empty.status_code == 422 and "El archivo no tiene enlaces de Ace Stream." in empty.text
+    assert taken.status_code == 422 and "Ya hay una fuente web con ese nombre" in taken.text
+    assert unnamed.status_code == 422 and "Ponle un nombre" in unnamed.text
