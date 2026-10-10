@@ -32,7 +32,7 @@ MAX_ENTRIES = 5000  # per source
 FETCH_TIMEOUT = 20.0  # for each step: connecting, each read…
 FETCH_DEADLINE = 30.0  # for the whole download, redirects included
 MAX_REDIRECTS = 5
-EXPLORE_LIMIT = 200  # rows shown at once; the search narrows the rest
+PAGE_SIZE = 100  # Explorar rows per page
 _NAME_LENGTH = 100
 _URL_LENGTH = 1000
 _TITLE_LENGTH = 200
@@ -56,6 +56,7 @@ class ExploreQuery:
     text: str | None = None  # in the title, the group or the Content ID
     source_id: int | None = None
     only_new: bool = False  # hide the channels already in the catalog
+    page: int = 1  # 1-based; past the last one means the last one
 
 
 @dataclass(frozen=True)
@@ -68,7 +69,9 @@ class ExploreRow:
 @dataclass(frozen=True)
 class ExploreResult:
     rows: list[ExploreRow]
-    total: int  # matches before the limit
+    total: int  # matches in every page
+    page: int = 1  # the page shown, within 1..pages
+    pages: int = 1  # at least one, even with no matches
 
 
 def list_sources(session: Session) -> list[Source]:
@@ -332,8 +335,10 @@ def refresh_sources(session: Session, client: httpx.Client) -> list[Source]:
     return refreshed
 
 
-def explore(session: Session, query: ExploreQuery, *, limit: int = EXPLORE_LIMIT) -> ExploreResult:
-    """Entries of the enabled sources, with the catalog channel each one matches, if any."""
+def explore(
+    session: Session, query: ExploreQuery, *, page_size: int | None = None
+) -> ExploreResult:
+    """A page of the entries of the enabled sources, with their catalog channel, if any."""
     stmt = (
         select(SourceEntry, Source.name, Channel)
         .join(Source, Source.id == SourceEntry.source_id)
@@ -358,14 +363,22 @@ def explore(session: Session, query: ExploreQuery, *, limit: int = EXPLORE_LIMIT
     if query.only_new:
         stmt = stmt.where(Channel.id.is_(None))
     total = session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
-    stmt = stmt.order_by(
-        SourceEntry.title.is_(None),
-        func.lower(SourceEntry.title),
-        func.lower(Source.name),
-        SourceEntry.position,
-    ).limit(limit)
+    page_size = page_size or PAGE_SIZE
+    pages = max(1, -(-total // page_size))
+    page = min(max(query.page, 1), pages)
+    stmt = (
+        stmt.order_by(
+            SourceEntry.title.is_(None),
+            func.lower(SourceEntry.title),
+            func.lower(Source.name),
+            SourceEntry.position,
+            SourceEntry.id,  # a stable order, so no row shows up in two pages
+        )
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    )
     rows = [ExploreRow(entry, name, channel) for entry, name, channel in session.execute(stmt)]
-    return ExploreResult(rows, total)
+    return ExploreResult(rows, total, page, pages)
 
 
 def add_entries(

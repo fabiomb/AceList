@@ -661,3 +661,7 @@ form.inline { display: inline; }
 .selection-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 8px; }
 .selection-count { color: var(--muted); margin-right: 4px; }
 th.select, td.select { width: 1%; }
+
+/* Pages of a long search in Explorar. */
+.pager { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 8px 0; }
+.pager span { color: var(--muted); }
