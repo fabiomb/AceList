@@ -187,3 +187,7 @@ El seguimiento se hace con [issues de GitHub](https://github.com/fabiomb/AceList
 - [docs/engine-api.md](docs/engine-api.md): API del engine de Acestream observada en la práctica.
 - [docs/packaging.md](docs/packaging.md): cómo se empaqueta el ejecutable para Windows.
 - [CHANGELOG.md](CHANGELOG.md): registro de cambios.
+
+## Licencia
+
+[MIT](LICENSE).

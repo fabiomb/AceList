@@ -4,6 +4,9 @@ Todos los cambios relevantes del proyecto se registran aquí. Formato basado en 
 
 ## [Sin publicar]
 
+### Agregado
+- MIT license (`LICENSE`), declared in `pyproject.toml` and shipped as `LICENSE.txt` next to `AceList.exe` in the Windows zip.
+
 ## [1.5.0] - 2026-10-11
 
 Fuentes desde un archivo local, selección múltiple en el listado, más herramientas en Explorar (páginas, quitar, reproducir y verificar sin importar), enlaces con infohash y los arreglos de la revisión de #88.
