@@ -13,6 +13,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.acestream.content_id import IdKind
 from app.db.base import Base, UTCDateTime, utcnow
 
 
@@ -62,6 +63,10 @@ class Channel(Base):
             "resolution IN (" + ", ".join(f"'{r.value}'" for r in Resolution) + ")",
             name="resolution_valid",
         ),
+        CheckConstraint(
+            "id_kind IN (" + ", ".join(f"'{k.value}'" for k in IdKind) + ")",
+            name="id_kind_valid",
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -69,6 +74,17 @@ class Channel(Base):
     # The user gave no title: this one is provisional until the stream's name is known.
     title_pending: Mapped[bool] = mapped_column(default=False, server_default=false())
     content_id: Mapped[str] = mapped_column(String(40), unique=True)
+    # How the engine loaded `content_id` last time (some links carry the infohash
+    # instead); None until it has loaded it once.
+    id_kind: Mapped[IdKind | None] = mapped_column(
+        Enum(
+            IdKind,
+            native_enum=False,
+            create_constraint=False,
+            length=10,
+            values_callable=lambda e: [m.value for m in e],
+        )
+    )
     # RESTRICT: a category in use cannot be deleted without reassigning its channels.
     category_id: Mapped[int | None] = mapped_column(
         ForeignKey("category.id", ondelete="RESTRICT"), index=True

@@ -89,6 +89,8 @@ def update_channel(session: Session, channel_id: int, **changes) -> Channel:
         changes["country"] = normalize_country(changes["country"])
     if "resolution" in changes:
         changes["resolution"] = normalize_resolution(changes["resolution"])
+    if changes.get("content_id", channel.content_id) != channel.content_id:
+        channel.id_kind = None  # the new one may be of the other kind
     for field, value in changes.items():
         setattr(channel, field, value)
     _commit_unique(session, changes.get("content_id", channel.content_id))

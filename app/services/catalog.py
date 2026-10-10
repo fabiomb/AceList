@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.acestream.client import EngineClient, StreamSession
-from app.acestream.content_id import InvalidContentIdError, parse_content_id
+from app.acestream.content_id import IdKind, InvalidContentIdError, parse_content_id
 from app.acestream.errors import EngineError, EngineUnavailableError
 from app.config import DATA_DIR
 from app.db.models import Channel, Check
@@ -80,8 +80,13 @@ def check_channel(
             log.warning("no screenshot for %s: %s", content_id, exc)
 
     result = verify(
-        client, content_id, settings, on_alive=take_screenshot if wants_screenshot else None
+        client,
+        content_id,
+        settings,
+        kind=channel.id_kind,
+        on_alive=take_screenshot if wants_screenshot else None,
     )
+    _remember_kind(session, channel, result.kind)
     frame = frame_size(data_dir / screenshot) if screenshot else None
     check = record_verification(
         session, channel_id, result, screenshot_path=screenshot, frame=frame
@@ -95,13 +100,24 @@ def check_channel(
 def _name_from_stream(session: Session, client: EngineClient, channel: Channel) -> None:
     """Replaces a provisional title with the content's published name, if the engine has it."""
     try:
-        name = clean_stream_name(client.media_name(channel.content_id))
+        media = client.media(channel.content_id, channel.id_kind)
     except EngineError as exc:
         # The title stays provisional and the next check tries again.
         log.warning("no stream name for %s: %s", channel.content_id, exc)
         return
+    if media is None:
+        return
+    _remember_kind(session, channel, media.kind)
+    name = clean_stream_name(media.name)
     if name is not None:
         channels.update_channel(session, channel.id, title=name)
+
+
+def _remember_kind(session: Session, channel: Channel, kind: IdKind | None) -> None:
+    """Stores how the engine loaded the channel, so next time it is asked that way only."""
+    if kind is not None and channel.id_kind != kind:
+        channel.id_kind = kind
+        session.commit()
 
 
 def has_screenshot(session: Session, channel_id: int) -> bool:

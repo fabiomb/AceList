@@ -67,6 +67,8 @@ Contenido inexistente o mal formado (HTTP 200, en ~4 s):
 
 Tanto `0000...0000` como `not-a-hash` dieron este mismo error. El engine devuelve HTTP 200 también en los errores: hay que mirar el campo `error`.
 
+**Enlaces con el infohash (#100).** Algunos enlaces `acestream://` traen el infohash del torrent en lugar del Content ID; tienen el mismo formato. Con `id=` el engine responde `failed to load content` a los ~4,6 s; con `getstream?infohash=<hash>` (y `get_media_files&infohash=<hash>`) carga en menos de un segundo. Un hash inexistente pedido con `infohash=` tarda ~28 s en dar el mismo error. Medido con el engine 3.1.74 y dos canales en vivo (ANTENA 3 Spain y AXN Movies Spain). Después de cargar un contenido por infohash, el engine lo acepta también con `id=` durante un tiempo (lo tiene en caché). El cliente prueba las dos formas: primero la que funcionó antes, si se sabe, y si no, como Content ID.
+
 ### Estadísticas de la sesión
 
 ```

@@ -95,3 +95,29 @@ def test_source_files_migration_allows_sources_without_url(tmp_path):
         assert connection.exec_driver_sql("SELECT name FROM source").all() == [("Web",)]
         assert connection.exec_driver_sql("SELECT source_id FROM source_entry").all() == [(1,)]
     engine.dispose()
+
+
+def test_id_kind_migration_keeps_channels_and_enforces_values(tmp_path):
+    url = f"sqlite:///{(tmp_path / 'test.db').as_posix()}"
+    config = _config(url)
+    command.upgrade(config, "0005")
+    engine = create_engine(url)
+    with engine.begin() as connection:
+        connection.exec_driver_sql(
+            "INSERT INTO channel (title, content_id, created_at, updated_at) VALUES "
+            "('Uno', '78266c15035d0ad8cbc58f821733931e1de434ab', '2026-10-10', '2026-10-10')"
+        )
+
+    command.upgrade(config, "head")
+
+    with engine.begin() as connection:
+        assert connection.exec_driver_sql("SELECT title, id_kind FROM channel").all() == [
+            ("Uno", None)
+        ]
+        connection.exec_driver_sql("UPDATE channel SET id_kind = 'infohash'")
+    with pytest.raises(IntegrityError), engine.begin() as connection:
+        connection.exec_driver_sql("UPDATE channel SET id_kind = 'magnet'")
+    command.downgrade(config, "0005")
+    with engine.begin() as connection:
+        assert connection.exec_driver_sql("SELECT title FROM channel").all() == [("Uno",)]
+    engine.dispose()

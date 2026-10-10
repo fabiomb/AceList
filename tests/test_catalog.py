@@ -489,3 +489,14 @@ def test_renaming_a_provisional_title_makes_it_final(
 
     stored = channels.get_channel(session, channel.id)
     assert (stored.title, stored.title_pending) == ("Elegido", False)
+
+
+def test_changing_the_content_id_forgets_how_it_was_loaded(session):
+    channel = channels.create_channel(session, title="Uno", content_id=HASH_A)
+    channel.id_kind = "infohash"
+    session.commit()
+
+    channels.update_channel(session, channel.id, title="Otro", content_id=HASH_A)
+    assert channel.id_kind == "infohash"
+    channels.update_channel(session, channel.id, content_id=HASH_B)
+    assert channel.id_kind is None
