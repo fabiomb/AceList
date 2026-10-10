@@ -8,6 +8,7 @@ from app.services.listing import (
     UNCHECKED,
     ChannelQuery,
     SortKey,
+    count_channels,
     search_channels,
     used_countries,
     used_languages,
@@ -168,3 +169,25 @@ def test_filters_by_resolution(db, catalog):
 
     assert titles(db, resolution="1080p") == ["alfa deportes"]
     assert titles(db, resolution="unknown") == ["Delta", "Gamma 100%_real"]
+
+
+def test_limit_keeps_the_order_and_count_ignores_it(db, catalog):
+    first_two = search_channels(db, ChannelQuery(sort=SortKey.PEERS, descending=True), limit=2)
+
+    assert [channel.title for channel, _ in first_two] == ["Beta News", "Gamma 100%_real"]
+    assert count_channels(db, ChannelQuery()) == 4
+    assert count_channels(db, ChannelQuery(text="e", status=CheckStatus.ALIVE)) == 1
+
+
+def test_latest_screenshots_of_some_channels(db, catalog):
+    for name in ("alfa", "beta", "gamma"):
+        checks.add_check(
+            db, catalog[name].id, status=CheckStatus.ALIVE, screenshot_path=f"{name}.jpg"
+        )
+
+    every = checks.latest_screenshots(db)
+    some = checks.latest_screenshots(db, [catalog["beta"].id, catalog["delta"].id])
+
+    assert sorted(every.values()) == ["alfa.jpg", "beta.jpg", "gamma.jpg"]
+    assert some == {catalog["beta"].id: "beta.jpg"}
+    assert checks.latest_screenshots(db, []) == {}

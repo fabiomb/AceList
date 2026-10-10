@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from datetime import datetime
 
 from sqlalchemy import func, select
@@ -93,11 +94,15 @@ def get_latest_check(session: Session, channel_id: int) -> Check | None:
     ).first()
 
 
-def latest_screenshots(session: Session) -> dict[int, str]:
+def latest_screenshots(
+    session: Session, channel_ids: Iterable[int] | None = None
+) -> dict[int, str]:
     """Newest screenshot path of every channel that has one, keyed by channel id.
 
-    Not necessarily from the latest check: most checks take no screenshot.
+    Only for `channel_ids`, if given. Not necessarily from the latest check: most checks
+    take no screenshot.
     """
+    only = [] if channel_ids is None else [Check.channel_id.in_(list(channel_ids))]
     ranked = (
         select(
             Check.channel_id.label("channel_id"),
@@ -109,7 +114,7 @@ def latest_screenshots(session: Session) -> dict[int, str]:
             )
             .label("rank"),
         )
-        .where(Check.screenshot_path.is_not(None))
+        .where(Check.screenshot_path.is_not(None), *only)
         .subquery()
     )
     rows = session.execute(select(ranked.c.channel_id, ranked.c.path).where(ranked.c.rank == 1))

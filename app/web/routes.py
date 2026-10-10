@@ -175,17 +175,22 @@ def channel_suggest(request: Request, session: SessionDep, q: str = ""):
     text = q.strip()
     if not text:
         return HTMLResponse("")
-    matches = listing.search_channels(session, ChannelQuery(text=text))
-    shots = checks.latest_screenshots(session)
+    # Runs on every keystroke: only the rows shown, their screenshots and a count.
+    query = ChannelQuery(text=text)
+    matches = listing.search_channels(session, query, limit=SUGGEST_LIMIT)
+    total = len(matches)
+    if total == SUGGEST_LIMIT:
+        total = listing.count_channels(session, query)
+    shots = checks.latest_screenshots(session, [channel.id for channel, _ in matches])
     rows = [
         ChannelRow(channel, check, screenshot_url(request, shots.get(channel.id)))
-        for channel, check in matches[:SUGGEST_LIMIT]
+        for channel, check in matches
     ]
     all_url = request.url_for("channel_list").include_query_params(q=text)
     return templates.TemplateResponse(
         request,
         "channels/_suggest.html",
-        {"rows": rows, "total": len(matches), "text": text, "all_url": all_url},
+        {"rows": rows, "total": total, "text": text, "all_url": all_url},
     )
 
 

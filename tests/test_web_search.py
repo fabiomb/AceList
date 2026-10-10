@@ -82,3 +82,29 @@ def test_suggest_shows_a_few_and_links_to_all_of_them(web, db):
     assert f"Ver los {SUGGEST_LIMIT + 3} resultados en el listado" in many
     assert 'href="http://127.0.0.1/?q=canal"' in many
     assert page.count('class="suggest-item"') == 1  # only "Canal 10"
+
+
+def test_suggest_counts_right_at_the_limit(web, db):
+    for i in range(SUGGEST_LIMIT):
+        channels.create_channel(db, title=f"Canal {i:02}", content_id=f"{i:040x}")
+
+    page = web.get("/search/suggest", params={"q": "canal"}).text
+
+    assert page.count('class="suggest-item"') == SUGGEST_LIMIT
+    assert f"Ver los {SUGGEST_LIMIT} resultados en el listado" in page
+
+
+def test_suggest_only_looks_up_screenshots_of_what_it_shows(web, db, monkeypatch):
+    uno = seed(db)
+    asked = []
+    real = checks.latest_screenshots
+
+    def spy(session, channel_ids=None):
+        asked.append(channel_ids)
+        return real(session, channel_ids)
+
+    monkeypatch.setattr(checks, "latest_screenshots", spy)
+
+    web.get("/search/suggest", params={"q": "uno"})
+
+    assert asked == [[uno.id]]
