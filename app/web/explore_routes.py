@@ -46,7 +46,7 @@ def _render_explore(
     error: str | None = None,
 ) -> HTMLResponse:
     all_sources = sources.list_sources(session)
-    return templates.TemplateResponse(
+    response = templates.TemplateResponse(
         request,
         "explore/index.html",
         {
@@ -62,6 +62,21 @@ def _render_explore(
         },
         status_code=422 if error else 200,
     )
+    if request.method == "POST":
+        # Keeps /explore and its search in the address bar: reloading /explore/add would be
+        # a GET it lacks.
+        response.headers["HX-Push-Url"] = _explore_url(request, query)
+    return response
+
+
+def _explore_url(request: Request, query: ExploreQuery) -> str:
+    params = {
+        "q": query.text or "",
+        "source": "" if query.source_id is None else str(query.source_id),
+        "new": "1" if query.only_new else "",
+    }
+    url = request.url_for("explore")
+    return str(url.include_query_params(**{k: v for k, v in params.items() if v}))
 
 
 @router.get("", response_class=HTMLResponse, name="explore")
