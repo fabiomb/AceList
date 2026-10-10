@@ -5,14 +5,15 @@ from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
-from app.db.models import Category
-from app.services import categories, sources
+from app.db.models import Category, SourceEntry
+from app.services import categories, channels, sources
 from app.services.catalog import Screenshots
 from app.services.errors import DuplicateError, NotFoundError, ServiceError, ValidationError
 from app.services.sources import ExploreQuery, SourceFetchError
 from app.web.check_routes import start_checks
 from app.web.deps import (
     CheckRunnerDep,
+    EngineDep,
     EngineFactoryDep,
     EngineProbeDep,
     SessionDep,
@@ -20,6 +21,7 @@ from app.web.deps import (
     SettingsDep,
 )
 from app.web.forms import resolve_category
+from app.web.routes import play
 from app.web.templating import templates
 
 router = APIRouter(prefix="/explore")
@@ -145,6 +147,31 @@ def explore_add(
         screenshots=Screenshots.IF_MISSING,
     )
     return _render_explore(request, session, query, result=result)
+
+
+@router.post("/entries/{entry_id}/play", response_class=HTMLResponse, name="explore_play")
+def explore_play(
+    request: Request, session: SessionDep, client: EngineDep, settings: SettingsDep, entry_id: int
+):
+    """Opens a channel of a source in VLC without adding it to the catalog, to try it."""
+    entry = _entry_or_404(session, entry_id)
+    known = channels.find_channel_by_content_id(session, entry.content_id)
+    response, _ = play(
+        request,
+        client,
+        settings,
+        entry.content_id,
+        title=entry.title,
+        kind=known.id_kind if known else None,
+    )
+    return response
+
+
+def _entry_or_404(session: Session, entry_id: int) -> SourceEntry:
+    entry = session.get(SourceEntry, entry_id)
+    if entry is None:
+        raise HTTPException(status_code=404, detail="Canal no encontrado en las fuentes")
+    return entry
 
 
 @router.post("/remove", response_class=HTMLResponse, name="explore_remove")

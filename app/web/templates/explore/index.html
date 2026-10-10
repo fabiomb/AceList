@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_icons.html" import copy_button %}
+{% from "_icons.html" import copy_button, icon %}
 
 {# Reloading would lose the summary of what was added. #}
 {% set reload_on_checks = false %}
@@ -105,6 +105,7 @@
           <th scope="col">Grupo</th>
           <th scope="col">Hash</th>
           <th scope="col">Fuente</th>
+          <th scope="col"><span class="visually-hidden">Acciones</span></th>
         </tr>
       </thead>
       <tbody>
@@ -125,6 +126,12 @@
           <td>{{ entry.group or "—" }}</td>
           <td class="hash"><code title="{{ entry.content_id }}">{{ entry.content_id | short_hash }}</code>{{ copy_button(entry.content_id, "Copiar el hash de " ~ (entry.title or entry.content_id)) }}</td>
           <td>{{ row.source_name }}</td>
+          <td class="row-actions">
+            {# Not a form: these rows are inside the add form. No parameters are sent. #}
+            <button type="button" class="icon-button" hx-post="{{ url_for('explore_play', entry_id=entry.id) }}"
+                    hx-params="none" hx-target="#notices" hx-swap="innerHTML" hx-disabled-elt="this"
+                    aria-label="Reproducir {{ entry.title or entry.content_id }}" title="Reproducir sin agregarlo">{{ icon("play") }}</button>
+          </td>
         </tr>
         {% endfor %}
       </tbody>

@@ -303,3 +303,63 @@ def test_restoring_from_the_sources_page(web, db, listed):
     assert "Restaurar quitados" not in page
     assert "Uno HD" in web.get("/explore").text
     assert web.post("/explore/sources/99/restore").status_code == 404
+
+
+@pytest.fixture
+def opened(monkeypatch):
+    """Replaces the player: records what would be opened, or raises `error`."""
+    from types import SimpleNamespace
+
+    from app.acestream.content_id import IdKind
+    from app.web import routes
+
+    class Opened:
+        calls = []
+        error = None
+
+        def __call__(self, client, content_id, *, kind=None, title=None, vlc_path=None):
+            self.calls.append((content_id, kind, title))
+            if self.error:
+                raise self.error
+            return SimpleNamespace(kind=IdKind.CONTENT_ID)
+
+    fake = Opened()
+    monkeypatch.setattr(routes.player, "open_in_player", fake)
+    return fake
+
+
+def test_playing_a_channel_of_a_source_without_adding_it(web, db, listed, opened):
+    response = web.post(f"/explore/entries/{entry_id(db, 'Uno HD')}/play")
+
+    assert response.status_code == 200
+    assert "Abriendo «Uno HD» en VLC…" in response.text and "<html" not in response.text
+    assert opened.calls == [(HASH_A, None, "Uno HD")]
+    assert db.query(Channel).count() == 1  # still only "Mío"
+
+
+def test_playing_uses_how_the_catalog_loads_the_same_channel(web, db, listed, opened):
+    listed.id_kind = "infohash"
+    db.commit()
+
+    web.post(f"/explore/entries/{entry_id(db, 'Dos')}/play")
+
+    assert opened.calls[-1][:2] == (HASH_B, "infohash")
+
+
+def test_playing_failures_are_explained(web, db, listed, opened):
+    from app.acestream.errors import ContentNotFoundError
+
+    opened.error = ContentNotFoundError(HASH_A)
+
+    response = web.post(f"/explore/entries/{entry_id(db, 'Uno HD')}/play")
+
+    assert response.status_code == 503
+    assert "puede que el enlace haya muerto" in response.text
+    assert web.post("/explore/entries/999/play").status_code == 404
+
+
+def test_explore_rows_have_a_play_button(web, db, listed):
+    page = web.get("/explore").text
+
+    assert f'hx-post="http://127.0.0.1/explore/entries/{entry_id(db, "Uno HD")}/play"' in page
+    assert 'hx-params="none"' in page
