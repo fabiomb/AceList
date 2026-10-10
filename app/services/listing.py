@@ -45,12 +45,42 @@ class ChannelQuery:
     descending: bool = False
 
 
-def search_channels(session: Session, query: ChannelQuery) -> list[tuple[Channel, Check | None]]:
-    """Channels with their latest check, filtered and sorted.
+def search_channels(
+    session: Session, query: ChannelQuery, *, limit: int | None = None
+) -> list[tuple[Channel, Check | None]]:
+    """Channels with their latest check, filtered and sorted; the first `limit`, if given.
 
     Status, peers and check date always come from the latest check. Channels with
     no value for the sort column go last in either direction.
     """
+    stmt, latest = _filtered(query)
+    column = {
+        SortKey.TITLE: func.lower(Channel.title),
+        SortKey.CREATED: Channel.created_at,
+        SortKey.CHECKED: latest.checked_at,
+        SortKey.PEERS: latest.peers,
+        SortKey.STATUS: case(
+            *((latest.status == s, rank) for rank, s in enumerate(_STATUS_RANK)),
+            else_=None,
+        ),
+    }[query.sort]
+    stmt = stmt.order_by(
+        column.is_(None),  # missing values last, whatever the direction
+        column.desc() if query.descending else column.asc(),
+        func.lower(Channel.title),
+        Channel.id,
+    ).limit(limit)
+    return [(channel, check) for channel, check in session.execute(stmt)]
+
+
+def count_channels(session: Session, query: ChannelQuery) -> int:
+    """How many channels `search_channels` would return without a limit."""
+    stmt, _ = _filtered(query)
+    return session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
+
+
+def _filtered(query: ChannelQuery):
+    """Channels joined to their latest check and filtered, unsorted; and that check's alias."""
     ranked = select(
         Check.id.label("id"),
         Check.channel_id.label("channel_id"),
@@ -84,24 +114,7 @@ def search_channels(session: Session, query: ChannelQuery) -> list[tuple[Channel
         stmt = stmt.where(latest.id.is_(None))
     elif query.status:
         stmt = stmt.where(latest.status == CheckStatus(query.status))
-
-    column = {
-        SortKey.TITLE: func.lower(Channel.title),
-        SortKey.CREATED: Channel.created_at,
-        SortKey.CHECKED: latest.checked_at,
-        SortKey.PEERS: latest.peers,
-        SortKey.STATUS: case(
-            *((latest.status == s, rank) for rank, s in enumerate(_STATUS_RANK)),
-            else_=None,
-        ),
-    }[query.sort]
-    stmt = stmt.order_by(
-        column.is_(None),  # missing values last, whatever the direction
-        column.desc() if query.descending else column.asc(),
-        func.lower(Channel.title),
-        Channel.id,
-    )
-    return [(channel, check) for channel, check in session.execute(stmt)]
+    return stmt, latest
 
 
 def _matches_text(text: str):

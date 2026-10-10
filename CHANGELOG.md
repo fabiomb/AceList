@@ -7,6 +7,9 @@ Todos los cambios relevantes del proyecto se registran aquí. Formato basado en 
 ### Agregado
 - Sources from a local file (#94): the "add a source" form takes a web address or a file from this computer (`.m3u`, `.m3u8`, `.txt` or an AceList `.json` export, same 5 MB / 5000 channel limits), chosen or dragged onto the drop zone; on Explorar a file dropped anywhere on the page opens the form with it. The source is named after the file unless a name is typed; uploading again under the same name replaces its channels. File sources show "Archivo local" and are never downloaded. Migration 0005 makes `source.url` nullable.
 
+### Cambiado
+- The top bar search asks the database for the 8 channels it shows, a count of all the matches and the screenshots of those 8 only, instead of every match and every screenshot on each keystroke (#93).
+
 ### Corregido
 - Reloading Explorar after "Agregar los elegidos" gave 405 Method Not Allowed: the address bar now keeps `/explore` with the same search (#92).
 
