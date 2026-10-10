@@ -656,3 +656,8 @@ form.inline { display: inline; }
 .dropzone.dragging { border-color: var(--accent); background: var(--none-bg); }
 .add-source { margin-top: 24px; }
 .add-source > summary { cursor: pointer; font-size: 17px; font-weight: 600; margin-bottom: 12px; }
+
+/* Choosing channels in the list: a check box column and the bar of actions for them. */
+.selection-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 8px; }
+.selection-count { color: var(--muted); margin-right: 4px; }
+th.select, td.select { width: 1%; }

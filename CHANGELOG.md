@@ -5,6 +5,7 @@ Todos los cambios relevantes del proyecto se registran aquí. Formato basado en 
 ## [Sin publicar]
 
 ### Agregado
+- Choosing several channels in the list (#102): a check box per row and one to choose them all, and a bar with how many are chosen and three actions for them: Verificar, Regenerar capturas and Borrar (the last two ask first). Checks run in the background and every action comes back to the list with its filters.
 - Sources from a local file (#94): the "add a source" form takes a web address or a file from this computer (`.m3u`, `.m3u8`, `.txt` or an AceList `.json` export, same 5 MB / 5000 channel limits), chosen or dragged onto the drop zone; on Explorar a file dropped anywhere on the page opens the form with it. The source is named after the file unless a name is typed; uploading again under the same name replaces its channels. File sources show "Archivo local" and are never downloaded. Migration 0005 makes `source.url` nullable.
 
 ### Cambiado
