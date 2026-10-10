@@ -271,7 +271,7 @@ abbr { text-decoration: none; cursor: help; }
 
 .actions { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
 .busy { display: none; color: var(--muted); }
-form.htmx-request .busy { display: inline; }
+form.htmx-request .busy, td.htmx-request .busy { display: inline; }
 
 .filters {
   display: flex;

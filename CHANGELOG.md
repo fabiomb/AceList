@@ -5,6 +5,7 @@ Todos los cambios relevantes del proyecto se registran aquí. Formato basado en 
 ## [Sin publicar]
 
 ### Agregado
+- Checking a channel of a source without adding it (#106): Explorar has a Estado column with a check button per row that runs the same check as the catalog and shows the outcome (status, peers, when) in the row. It is kept on the source entry, also across refreshes (migration 0008). With Ace Stream off it says so and stores nothing.
 - Playing a channel of a source without adding it (#105): each Explorar row has a play button that opens it in VLC, the same way and with the same messages as the catalog (Content ID or infohash, #100).
 - Removing channels from a source (#104): "Quitar de la lista" in Explorar hides the chosen channels of their sources, and they stay hidden when the source is refreshed or its file uploaded again (kept by Content ID in the new `source_dismissed` table, migration 0007). Fuentes shows how many were removed from each source and "Restaurar quitados" brings them back. The catalog is not touched.
 - Pages in Explorar (#103): 100 channels per page with first, previous, next and last links and "página X de Y", instead of only the first 200. The page goes in the address (`page=`) with the search, and adding channels comes back to the same page; changing a filter starts again at the first one.

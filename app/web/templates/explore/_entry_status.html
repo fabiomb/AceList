@@ -1,0 +1,19 @@
+{# Status cell of an Explorar row: its last check from here, and a button to run one.
+   Expects `entry` and, after a check, `check_engine_down`. #}
+{% from "_icons.html" import icon %}
+<td class="status-cell">
+  {% if check_engine_down %}
+  <span class="status status-error" role="alert">Ace Stream no responde</span>
+  {% elif entry.check_status %}
+  <span class="status status-{{ entry.check_status.value }}">{{ status_labels[entry.check_status] }}</span>
+  {%- if entry.check_peers is not none %} <span class="hint">{{ entry.check_peers }} {{ "peer" if entry.check_peers == 1 else "peers" }}</span>{% endif %}
+  <time class="hint" datetime="{{ entry.checked_at.isoformat() }}" title="{{ entry.checked_at | localtime }}">{{ entry.checked_at | ago }}</time>
+  {% else %}
+  <span class="status status-unchecked">Sin verificar</span>
+  {% endif %}
+  {# Not a form: the rows are inside the add form. The cell replaces itself. #}
+  <button type="button" class="icon-button recheck-button" hx-post="{{ url_for('explore_check', entry_id=entry.id) }}"
+          hx-params="none" hx-target="closest td" hx-swap="outerHTML" hx-indicator="closest td" hx-disabled-elt="this"
+          aria-label="Verificar {{ entry.title or entry.content_id }}" title="Verificar sin agregarlo">{{ icon("recheck") }}</button>
+  <span class="busy" aria-live="polite">Verificando…</span>
+</td>

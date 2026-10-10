@@ -19,6 +19,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app import __version__
+from app.acestream.client import EngineClient
 from app.acestream.content_id import InvalidContentIdError, parse_content_id
 from app.db.base import utcnow
 from app.db.models import Channel, Source, SourceDismissed, SourceEntry
@@ -26,6 +27,7 @@ from app.services import channels, exchange, importer
 from app.services.errors import DuplicateError, NotFoundError, ValidationError
 from app.services.importer import ImportResult, Reason, Rejected
 from app.services.naming import clean_stream_name, placeholder_title
+from app.services.verification import VerificationSettings, verify
 
 MAX_SOURCE_BYTES = 5 * 1024 * 1024
 MAX_ENTRIES = 5000  # per source
@@ -310,6 +312,18 @@ def refresh_source(session: Session, source: Source, client: httpx.Client) -> So
 
 
 def _store_entries(session: Session, source: Source, entries: list[ParsedEntry]) -> None:
+    # Checks run from Explorar outlive the refresh, matched by Content ID.
+    checked = {
+        content_id: (status, peers, at)
+        for content_id, status, peers, at in session.execute(
+            select(
+                SourceEntry.content_id,
+                SourceEntry.check_status,
+                SourceEntry.check_peers,
+                SourceEntry.checked_at,
+            ).where(SourceEntry.source_id == source.id, SourceEntry.checked_at.is_not(None))
+        )
+    }
     session.execute(delete(SourceEntry).where(SourceEntry.source_id == source.id))
     session.add_all(
         SourceEntry(
@@ -318,6 +332,13 @@ def _store_entries(session: Session, source: Source, entries: list[ParsedEntry])
             title=entry.title,
             group=entry.group,
             position=position,
+            **dict(
+                zip(
+                    ("check_status", "check_peers", "checked_at"),
+                    checked.get(entry.content_id, (None, None, None)),
+                    strict=True,
+                )
+            ),
         )
         for position, entry in enumerate(entries, start=1)
     )
@@ -419,6 +440,30 @@ def restore_dismissed(session: Session, source_id: int) -> None:
     get_source(session, source_id)
     session.execute(delete(SourceDismissed).where(SourceDismissed.source_id == source_id))
     session.commit()
+
+
+def check_entry(
+    session: Session,
+    client: EngineClient,
+    entry_id: int,
+    settings: VerificationSettings | None = None,
+) -> SourceEntry:
+    """Verifies a channel of a source, as the catalog would, and keeps the outcome on it.
+
+    The channel is not added to the catalog. An engine that cannot be reached raises
+    `EngineUnavailableError` and nothing is stored, as with catalog checks.
+    Blocks while the engine is polled, so call it from a worker thread.
+    """
+    entry = session.get(SourceEntry, entry_id)
+    if entry is None:
+        raise NotFoundError(f"source entry not found: {entry_id}")
+    known = channels.find_channel_by_content_id(session, entry.content_id)
+    result = verify(client, entry.content_id, settings, kind=known.id_kind if known else None)
+    entry.check_status = result.status
+    entry.check_peers = result.peers
+    entry.checked_at = utcnow()
+    session.commit()
+    return entry
 
 
 def add_entries(
