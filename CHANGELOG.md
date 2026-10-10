@@ -9,6 +9,7 @@ Todos los cambios relevantes del proyecto se registran aquí. Formato basado en 
 
 ### Seguridad
 - Source downloads no longer follow redirects to loopback, private, link-local, shared, multicast or reserved addresses, nor to schemes other than http/https (#90). Redirects are followed by hand (at most 5), resolving each target first; the address the user types may still be local.
+- Source downloads have a 30-second limit for the whole download, redirects included, besides the 20 seconds for each step: a server sending a few bytes now and then can no longer keep the page waiting (#91).
 
 ## [1.4.0] - 2026-10-09
 
