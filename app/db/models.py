@@ -172,6 +172,9 @@ class Source(Base):
     entries: Mapped[list["SourceEntry"]] = relationship(
         back_populates="source", cascade="all, delete-orphan", passive_deletes=True
     )
+    dismissed: Mapped[list["SourceDismissed"]] = relationship(
+        cascade="all, delete-orphan", passive_deletes=True
+    )
 
 
 class SourceEntry(Base):
@@ -191,3 +194,17 @@ class SourceEntry(Base):
     position: Mapped[int]  # order in the list
 
     source: Mapped[Source] = relationship(back_populates="entries")
+
+
+class SourceDismissed(Base):
+    """A channel the user removed from a source: hidden from Explorar, even after a refresh.
+
+    Kept by Content ID, as entries are replaced on every refresh.
+    """
+
+    __tablename__ = "source_dismissed"
+    __table_args__ = (UniqueConstraint("source_id", "content_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    source_id: Mapped[int] = mapped_column(ForeignKey("source.id", ondelete="CASCADE"))
+    content_id: Mapped[str] = mapped_column(String(40))

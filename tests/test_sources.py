@@ -512,3 +512,41 @@ def test_each_request_gets_at_most_the_time_left(db, client, respx_mock, clock):
     sources.refresh_source(db, source, client)
 
     assert seen == [sources.FETCH_TIMEOUT] and source.entry_count == 2
+
+
+def entry_ids(db, *titles):
+    return [db.query(SourceEntry).filter_by(title=title).one().id for title in titles]
+
+
+def test_dismissed_entries_stay_hidden_after_a_refresh(db, client, explored):
+    hidden = sources.dismiss_entries(db, entry_ids(db, "Uno HD", "Tres 100%_real") * 2)
+
+    assert hidden == 2
+    assert names(db) == [("Dos", "Lista"), ("Uno otra vez", "Otra")]
+    assert sources.dismiss_entries(db, entry_ids(db, "Uno HD")) == 0  # already hidden
+
+    sources.refresh_sources(db, client)
+
+    assert names(db) == [("Dos", "Lista"), ("Uno otra vez", "Otra")]
+    assert sources.dismissed_counts(db) == {explored["lista"].id: 1, explored["otra"].id: 1}
+    # Hidden in its own source only: the same channel in another source still shows.
+    assert db.query(SourceEntry).count() == 4
+
+
+def test_restoring_shows_the_dismissed_entries_again(db, explored):
+    sources.dismiss_entries(db, entry_ids(db, "Uno HD", "Tres 100%_real"))
+
+    sources.restore_dismissed(db, explored["lista"].id)
+
+    assert ("Uno HD", "Lista") in names(db) and ("Tres 100%_real", "Otra") not in names(db)
+    assert sources.dismissed_counts(db) == {explored["otra"].id: 1}
+    with pytest.raises(NotFoundError):
+        sources.restore_dismissed(db, 999)
+
+
+def test_deleting_a_source_forgets_what_was_dismissed(db, explored):
+    sources.dismiss_entries(db, entry_ids(db, "Uno HD"))
+
+    sources.delete_source(db, explored["lista"].id)
+
+    assert sources.dismissed_counts(db) == {}

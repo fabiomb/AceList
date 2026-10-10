@@ -14,14 +14,14 @@ from pathlib import PurePath
 from urllib.parse import urlsplit
 
 import httpx
-from sqlalchemy import delete, func, or_, select
+from sqlalchemy import delete, exists, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app import __version__
 from app.acestream.content_id import InvalidContentIdError, parse_content_id
 from app.db.base import utcnow
-from app.db.models import Channel, Source, SourceEntry
+from app.db.models import Channel, Source, SourceDismissed, SourceEntry
 from app.services import channels, exchange, importer
 from app.services.errors import DuplicateError, NotFoundError, ValidationError
 from app.services.importer import ImportResult, Reason, Rejected
@@ -343,7 +343,7 @@ def explore(
         select(SourceEntry, Source.name, Channel)
         .join(Source, Source.id == SourceEntry.source_id)
         .outerjoin(Channel, Channel.content_id == SourceEntry.content_id)
-        .where(Source.enabled)
+        .where(Source.enabled, ~_dismissed(SourceEntry))
     )
     if query.text and query.text.strip():
         text = query.text.strip()
@@ -379,6 +379,46 @@ def explore(
     )
     rows = [ExploreRow(entry, name, channel) for entry, name, channel in session.execute(stmt)]
     return ExploreResult(rows, total, page, pages)
+
+
+def _dismissed(entry):
+    """Whether the user removed `entry`'s channel from its source."""
+    return exists().where(
+        SourceDismissed.source_id == entry.source_id,
+        SourceDismissed.content_id == entry.content_id,
+    )
+
+
+def dismiss_entries(session: Session, entry_ids: Iterable[int]) -> int:
+    """Hides the chosen entries from Explorar for good; returns how many were hidden.
+
+    Refreshing the source keeps them hidden; `restore_dismissed` brings them back.
+    The catalog is not touched.
+    """
+    ids = sorted(set(entry_ids))
+    entries = session.scalars(
+        select(SourceEntry).where(SourceEntry.id.in_(ids), ~_dismissed(SourceEntry))
+    ).all()
+    session.add_all(
+        SourceDismissed(source_id=entry.source_id, content_id=entry.content_id) for entry in entries
+    )
+    session.commit()
+    return len(entries)
+
+
+def dismissed_counts(session: Session) -> dict[int, int]:
+    """How many channels the user removed from each source, by source id."""
+    rows = session.execute(
+        select(SourceDismissed.source_id, func.count()).group_by(SourceDismissed.source_id)
+    )
+    return {source_id: count for source_id, count in rows}
+
+
+def restore_dismissed(session: Session, source_id: int) -> None:
+    """Shows again every channel the user removed from the source."""
+    get_source(session, source_id)
+    session.execute(delete(SourceDismissed).where(SourceDismissed.source_id == source_id))
+    session.commit()
 
 
 def add_entries(
