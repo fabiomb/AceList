@@ -3,6 +3,7 @@ import pytest
 
 from app.db.models import Channel, Source, SourceEntry
 from app.services import categories, channels
+from app.services import sources as sources_service
 
 HASH_A = "78266c15035d0ad8cbc58f821733931e1de434ab"
 HASH_B = "ecc85e5d2b6088d2d307fd0b5de4f09f089e762f"
@@ -363,3 +364,51 @@ def test_explore_rows_have_a_play_button(web, db, listed):
 
     assert f'hx-post="http://127.0.0.1/explore/entries/{entry_id(db, "Uno HD")}/play"' in page
     assert 'hx-params="none"' in page
+
+
+@pytest.fixture
+def checked_entries(monkeypatch):
+    """Replaces the engine check of Explorar with a fixed answer (or an exception)."""
+    from app.db.models import CheckStatus
+    from app.services.verification import VerificationResult
+
+    state = {"outcome": VerificationResult(CheckStatus.NO_PEERS, peers=0)}
+
+    def fake(client, content_id, settings=None, *, kind=None):
+        if isinstance(state["outcome"], Exception):
+            raise state["outcome"]
+        return state["outcome"]
+
+    monkeypatch.setattr(sources_service, "verify", fake)
+    return state
+
+
+def test_checking_a_channel_of_a_source_answers_with_its_status_cell(
+    web, db, listed, checked_entries
+):
+    response = web.post(f"/explore/entries/{entry_id(db, 'Uno HD')}/check")
+
+    assert response.status_code == 200
+    cell = response.text
+    assert '<td class="status-cell">' in cell
+    assert "Sin peers" in cell and "0 peers" in cell and "<html" not in cell
+    assert "Sin peers" in web.get("/explore").text
+    assert db.query(Channel).count() == 1
+
+
+def test_checking_with_the_engine_down_says_so(web, db, listed, checked_entries):
+    from app.acestream.errors import EngineUnavailableError
+
+    checked_entries["outcome"] = EngineUnavailableError("down")
+
+    cell = web.post(f"/explore/entries/{entry_id(db, 'Uno HD')}/check").text
+
+    assert "Ace Stream no responde" in cell
+    assert web.post("/explore/entries/999/check").status_code == 404
+
+
+def test_explore_rows_have_a_status_and_a_check_button(web, db, listed):
+    page = web.get("/explore").text
+
+    assert page.count("Sin verificar") == 2
+    assert f'hx-post="http://127.0.0.1/explore/entries/{entry_id(db, "Dos")}/check"' in page

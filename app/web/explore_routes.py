@@ -5,6 +5,7 @@ from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
+from app.acestream.errors import EngineUnavailableError
 from app.db.models import Category, SourceEntry
 from app.services import categories, channels, sources
 from app.services.catalog import Screenshots
@@ -165,6 +166,24 @@ def explore_play(
         kind=known.id_kind if known else None,
     )
     return response
+
+
+@router.post("/entries/{entry_id}/check", response_class=HTMLResponse, name="explore_check")
+def explore_check(
+    request: Request, session: SessionDep, client: EngineDep, settings: SettingsDep, entry_id: int
+):
+    """Checks a channel of a source without adding it; answers with its status cell."""
+    entry = _entry_or_404(session, entry_id)
+    engine_down = False
+    try:
+        sources.check_entry(session, client, entry.id, settings.verification())
+    except EngineUnavailableError:
+        engine_down = True  # says nothing about the channel: nothing is stored
+    return templates.TemplateResponse(
+        request,
+        "explore/_entry_status.html",
+        {"entry": entry, "check_engine_down": engine_down},
+    )
 
 
 def _entry_or_404(session: Session, entry_id: int) -> SourceEntry:

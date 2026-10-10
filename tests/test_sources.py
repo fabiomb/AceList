@@ -550,3 +550,76 @@ def test_deleting_a_source_forgets_what_was_dismissed(db, explored):
     sources.delete_source(db, explored["lista"].id)
 
     assert sources.dismissed_counts(db) == {}
+
+
+@pytest.fixture
+def verified(monkeypatch):
+    """Replaces the engine check: records each call and answers `outcome`."""
+    from app.db.models import CheckStatus
+    from app.services.verification import VerificationResult
+
+    class Verified:
+        calls = []
+        outcome = VerificationResult(CheckStatus.ALIVE, peers=3)
+
+        def __call__(self, client, content_id, settings=None, *, kind=None):
+            self.calls.append((content_id, kind))
+            if isinstance(self.outcome, Exception):
+                raise self.outcome
+            return self.outcome
+
+    fake = Verified()
+    monkeypatch.setattr(sources, "verify", fake)
+    return fake
+
+
+def test_check_entry_keeps_the_outcome_without_adding_the_channel(db, explored, verified):
+    from app.db.models import Channel, CheckStatus
+
+    entry_id = entry_ids(db, "Uno HD")[0]
+
+    entry = sources.check_entry(db, None, entry_id)
+
+    assert (entry.check_status, entry.check_peers) == (CheckStatus.ALIVE, 3)
+    assert entry.checked_at is not None
+    assert verified.calls == [(HASH_A, None)]
+    assert [c.title for c in db.query(Channel)] == ["Mío"]
+
+
+def test_check_entry_asks_the_way_the_catalog_knows(db, explored, verified):
+    explored["mine"].id_kind = "infohash"
+    db.commit()
+
+    sources.check_entry(db, None, entry_ids(db, "Dos")[0])
+
+    assert verified.calls == [(HASH_B, "infohash")]
+
+
+def test_check_entry_with_the_engine_down_stores_nothing(db, explored, verified):
+    from app.acestream.errors import EngineUnavailableError
+
+    verified.outcome = EngineUnavailableError("down")
+    entry_id = entry_ids(db, "Uno HD")[0]
+
+    with pytest.raises(EngineUnavailableError):
+        sources.check_entry(db, None, entry_id)
+
+    assert db.get(SourceEntry, entry_id).checked_at is None
+    with pytest.raises(NotFoundError):
+        sources.check_entry(db, None, 999)
+
+
+def test_checks_outlive_a_refresh(db, client, explored, verified):
+    from app.db.models import CheckStatus
+
+    sources.check_entry(db, None, entry_ids(db, "Uno HD")[0])
+
+    sources.refresh_sources(db, client)
+
+    entries = {e.title: e for e in db.query(SourceEntry)}
+    assert (entries["Uno HD"].check_status, entries["Uno HD"].check_peers) == (
+        CheckStatus.ALIVE,
+        3,
+    )
+    assert entries["Dos"].checked_at is None
+    assert entries["Uno otra vez"].checked_at is None  # same channel, other source

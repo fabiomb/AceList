@@ -105,6 +105,7 @@
           <th scope="col">Grupo</th>
           <th scope="col">Hash</th>
           <th scope="col">Fuente</th>
+          <th scope="col">Estado</th>
           <th scope="col"><span class="visually-hidden">Acciones</span></th>
         </tr>
       </thead>
@@ -126,6 +127,7 @@
           <td>{{ entry.group or "—" }}</td>
           <td class="hash"><code title="{{ entry.content_id }}">{{ entry.content_id | short_hash }}</code>{{ copy_button(entry.content_id, "Copiar el hash de " ~ (entry.title or entry.content_id)) }}</td>
           <td>{{ row.source_name }}</td>
+          {% include "explore/_entry_status.html" %}
           <td class="row-actions">
             {# Not a form: these rows are inside the add form. No parameters are sent. #}
             <button type="button" class="icon-button" hx-post="{{ url_for('explore_play', entry_id=entry.id) }}"

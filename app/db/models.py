@@ -184,6 +184,10 @@ class SourceEntry(Base):
     __table_args__ = (
         UniqueConstraint("source_id", "content_id"),
         Index("ix_source_entry_content_id", "content_id"),
+        CheckConstraint(
+            "check_status IN (" + ", ".join(f"'{s.value}'" for s in CheckStatus) + ")",
+            name="check_status_valid",
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -192,6 +196,18 @@ class SourceEntry(Base):
     title: Mapped[str | None] = mapped_column(String(200))  # None: the list gave no name
     group: Mapped[str | None] = mapped_column(String(100))  # the list's own grouping, if any
     position: Mapped[int]  # order in the list
+    # Last check run from Explorar, without adding the channel; kept across refreshes.
+    check_status: Mapped[CheckStatus | None] = mapped_column(
+        Enum(
+            CheckStatus,
+            native_enum=False,
+            create_constraint=False,
+            length=16,
+            values_callable=lambda e: [m.value for m in e],
+        )
+    )
+    check_peers: Mapped[int | None]
+    checked_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
 
     source: Mapped[Source] = relationship(back_populates="entries")
 
