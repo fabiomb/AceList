@@ -139,13 +139,13 @@ class Setting(Base):
 
 
 class Source(Base):
-    """A channel list on the web (M3U, links or an AceList export) to explore and pick from."""
+    """A channel list (M3U, links or an AceList export) to explore and pick from."""
 
     __tablename__ = "source"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(100), unique=True)
-    url: Mapped[str] = mapped_column(String(1000))
+    url: Mapped[str | None] = mapped_column(String(1000))  # None: uploaded from a file
     enabled: Mapped[bool] = mapped_column(default=True, server_default=true())
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     # Outcome of the last refresh: when, how many channels it brought, or why it failed.

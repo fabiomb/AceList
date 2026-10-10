@@ -1,0 +1,32 @@
+{# The "add a source" form: a web address or a file from this computer, dropped or chosen. #}
+{% set values = values | default({}) %}
+{% set errors = errors | default({}) %}
+{% macro field_error(name) %}
+  {% if errors[name] %}<p class="field-error" id="{{ name }}-error">{{ errors[name] }}</p>{% endif %}
+{% endmacro %}
+{% macro invalid(name) %}{% if errors[name] %} aria-invalid="true" aria-describedby="{{ name }}-error"{% endif %}{% endmacro %}
+<form class="card form" method="post" action="{{ url_for('source_create') }}" enctype="multipart/form-data" hx-disabled-elt="find button[type=submit]">
+  <div class="field">
+    <label for="name">Nombre</label>
+    <input id="name" name="name" type="text" maxlength="100" value="{{ values.name or '' }}"{{ invalid("name") }}>
+    {{ field_error("name") }}
+    <p class="hint">Si subes un archivo y lo dejas vacío, se usa el nombre del archivo. Subir otra vez un archivo con el mismo nombre reemplaza sus canales.</p>
+  </div>
+  <div class="field">
+    <label for="url">Dirección</label>
+    <input id="url" name="url" type="url" maxlength="1000" placeholder="https://…/lista.m3u" value="{{ values.url or '' }}"{{ invalid("url") }}>
+    {{ field_error("url") }}
+  </div>
+  <div class="field">
+    <label for="file">o un archivo de tu equipo</label>
+    <div class="dropzone" data-dropzone>
+      <input id="file" name="file" type="file" accept=".m3u,.m3u8,.txt,.json,audio/x-mpegurl,application/vnd.apple.mpegurl,application/json,text/plain"{{ invalid("file") }}>
+      <p class="hint" data-dropzone-label>Arrastra aquí un <code>.m3u</code>, <code>.m3u8</code>, <code>.txt</code> o una exportación <code>.json</code> de AceList.</p>
+    </div>
+    {{ field_error("file") }}
+  </div>
+  <div class="actions">
+    <button type="submit" class="button primary">Agregar</button>
+    <span class="busy" aria-live="polite">Leyendo la lista…</span>
+  </div>
+</form>

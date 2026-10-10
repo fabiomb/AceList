@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Form, HTTPException, Request
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
@@ -8,7 +8,7 @@ from app.db.models import Category
 from app.services import categories, sources
 from app.services.catalog import Screenshots
 from app.services.errors import DuplicateError, NotFoundError, ServiceError, ValidationError
-from app.services.sources import ExploreQuery
+from app.services.sources import ExploreQuery, SourceFetchError
 from app.web.check_routes import start_checks
 from app.web.deps import (
     CheckRunnerDep,
@@ -155,15 +155,23 @@ def sources_page(request: Request, session: SessionDep):
 
 
 @router.post("/sources", response_class=HTMLResponse, name="source_create")
-def source_create(request: Request, session: SessionDep, name: FormField = "", url: FormField = ""):
+def source_create(
+    request: Request,
+    session: SessionDep,
+    name: FormField = "",
+    url: FormField = "",
+    file: Annotated[UploadFile | None, File()] = None,
+):
     values = {"name": name, "url": url}
+    if file is not None and file.filename:
+        return _create_file_source(request, session, values, file)
     try:
         source = sources.create_source(session, name=name, url=url)
     except ValidationError as exc:
         field = "name" if str(exc).startswith("name") else "url"
         message = {
             "name": "Ponle un nombre (hasta 100 caracteres).",
-            "url": "Escribe una dirección http:// o https://.",
+            "url": "Escribe una dirección http:// o https://, o elige un archivo.",
         }[field]
         return _render_sources(request, session, values=values, errors={field: message})
     except DuplicateError:
@@ -174,6 +182,22 @@ def source_create(request: Request, session: SessionDep, name: FormField = "", u
     with sources.make_client() as client:
         sources.refresh_source(session, source, client)
     return _to_sources(request)
+
+
+def _create_file_source(request: Request, session: Session, values: dict, file: UploadFile):
+    # One byte over the limit is enough to tell the file is too big.
+    data = file.file.read(sources.MAX_SOURCE_BYTES + 1)
+    try:
+        sources.add_file_source(session, name=values["name"], filename=file.filename, data=data)
+    except ValidationError:
+        errors = {"name": "Ponle un nombre (hasta 100 caracteres)."}
+    except DuplicateError:
+        errors = {"name": "Ya hay una fuente web con ese nombre; elige otro."}
+    except SourceFetchError as exc:
+        errors = {"file": str(exc)}
+    else:
+        return _to_sources(request)
+    return _render_sources(request, session, values=values, errors=errors)
 
 
 @router.post("/sources/refresh", name="sources_refresh")

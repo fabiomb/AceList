@@ -278,3 +278,53 @@ def test_add_entries_without_a_name_gets_a_provisional_title(db, client, respx_m
 def test_add_entries_checks_the_category(db, explored):
     with pytest.raises(NotFoundError):
         sources.add_entries(db, [1], category_id=123)
+
+
+def test_add_file_source_reads_the_file_and_is_named_after_it(db):
+    source = sources.add_file_source(
+        db, name="", filename=r"C:\listas\mis canales.m3u8", data=M3U.encode()
+    )
+
+    assert source.name == "mis canales" and source.url is None
+    assert source.entry_count == 2 and source.error_message is None
+    assert source.fetched_at is not None
+    assert [e.title for e in db.query(SourceEntry).order_by(SourceEntry.position)] == [
+        "Uno HD",
+        "Dos",
+    ]
+
+
+def test_add_file_source_again_replaces_its_entries(db):
+    first = sources.add_file_source(db, name="Mía", filename="a.m3u", data=M3U.encode())
+    again = sources.add_file_source(
+        db, name="Mía", filename="b.txt", data=f"acestream://{HASH_C}".encode("latin-1")
+    )
+
+    assert again.id == first.id and again.entry_count == 1
+    assert [e.content_id for e in db.query(SourceEntry)] == [HASH_C]
+
+
+def test_add_file_source_rejects_bad_files_without_changes(db, client, respx_mock, monkeypatch):
+    respx_mock.get(URL).respond(text=M3U)
+    web_source = sources.create_source(db, name="Web", url=URL)
+    sources.refresh_source(db, web_source, client)
+
+    with pytest.raises(DuplicateError):
+        sources.add_file_source(db, name="Web", filename="x.m3u", data=M3U.encode())
+    with pytest.raises(SourceFetchError, match="no tiene enlaces"):
+        sources.add_file_source(db, name="", filename="x.m3u", data=b"#EXTM3U\n")
+    with pytest.raises(ValidationError):
+        sources.add_file_source(db, name="", filename="   .m3u", data=M3U.encode())
+    monkeypatch.setattr(sources, "MAX_SOURCE_BYTES", 10)
+    with pytest.raises(SourceFetchError, match="supera"):
+        sources.add_file_source(db, name="", filename="x.m3u", data=M3U.encode())
+
+    assert [s.name for s in sources.list_sources(db)] == ["Web"]
+
+
+def test_file_sources_are_never_downloaded(db, client, respx_mock):
+    source = sources.add_file_source(db, name="", filename="x.m3u", data=M3U.encode())
+
+    assert sources.refresh_source(db, source, client) is source
+    assert sources.refresh_sources(db, client) == []
+    assert source.entry_count == 2

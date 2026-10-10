@@ -40,9 +40,8 @@
 {% if not sources %}
 <section class="empty-state">
   <p class="empty-title">Todavía no hay fuentes de canales.</p>
-  <p>Una fuente es una lista en la web: M3U, enlaces <code>acestream://</code> o una exportación de AceList.
-    AceList la descarga y aquí puedes buscar en ella y agregar los canales que elijas.</p>
-  <p><a class="button primary" href="{{ url_for('sources_page') }}">Agregar una fuente</a></p>
+  <p>Una fuente es una lista en la web o un archivo de tu equipo: M3U, enlaces <code>acestream://</code>
+    o una exportación de AceList. Aquí puedes buscar en ella y agregar los canales que elijas.</p>
 </section>
 {% elif not has_enabled %}
 <section class="empty-state">
@@ -143,4 +142,10 @@
 <p class="empty-state">Las fuentes activas no tienen canales todavía. Actualízalas en <a href="{{ url_for('sources_page') }}">Fuentes</a>.</p>
 {% endif %}
 {% endif %}
+
+{# Dropping a list file anywhere on the page opens this and fills it in. #}
+<details class="add-source"{% if not sources %} open{% endif %}>
+  <summary>Agregar una fuente</summary>
+  {% include "explore/_source_form.html" %}
+</details>
 {% endblock %}

@@ -70,3 +70,28 @@ def test_resolution_migration_keeps_existing_channels_and_enforces_values(tmp_pa
     engine.dispose()
 
     assert "ck_channel_resolution_valid" in constraints
+
+
+def test_source_files_migration_allows_sources_without_url(tmp_path):
+    url = f"sqlite:///{(tmp_path / 'test.db').as_posix()}"
+    config = _config(url)
+    command.upgrade(config, "head")
+    engine = create_engine(url)
+    with engine.begin() as connection:
+        connection.exec_driver_sql(
+            "INSERT INTO source (id, name, url, enabled, created_at) VALUES "
+            "(1, 'Web', 'https://lists.test/a.m3u', 1, '2026-10-10'), "
+            "(2, 'Archivo', NULL, 1, '2026-10-10')"
+        )
+        connection.exec_driver_sql(
+            "INSERT INTO source_entry (source_id, content_id, position) VALUES "
+            "(1, '78266c15035d0ad8cbc58f821733931e1de434ab', 1), "
+            "(2, 'ecc85e5d2b6088d2d307fd0b5de4f09f089e762f', 1)"
+        )
+
+    command.downgrade(config, "0004")
+
+    with engine.begin() as connection:
+        assert connection.exec_driver_sql("SELECT name FROM source").all() == [("Web",)]
+        assert connection.exec_driver_sql("SELECT source_id FROM source_entry").all() == [(1,)]
+    engine.dispose()
