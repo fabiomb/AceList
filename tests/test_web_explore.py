@@ -218,3 +218,19 @@ def test_file_source_errors(web, db, respx_mock):
     assert empty.status_code == 422 and "El archivo no tiene enlaces de Ace Stream." in empty.text
     assert taken.status_code == 422 and "Ya hay una fuente web con ese nombre" in taken.text
     assert unnamed.status_code == 422 and "Ponle un nombre" in unnamed.text
+
+
+@pytest.mark.parametrize(
+    ("form", "pushed"),
+    [
+        ({"q": "uno", "source": "1", "new": "1"}, "http://127.0.0.1/explore?q=uno&source=1&new=1"),
+        ({"q": "", "source": "", "new": ""}, "http://127.0.0.1/explore"),
+    ],
+)
+def test_adding_keeps_explore_in_the_address_bar(web, db, listed, engine_down, form, pushed):
+    added = web.post("/explore/add", data={"entry": [entry_id(db, "Uno HD")], **form})
+    nothing = web.post("/explore/add", data=form)
+
+    assert added.headers["HX-Push-Url"] == pushed
+    assert nothing.status_code == 422 and nothing.headers["HX-Push-Url"] == pushed
+    assert "HX-Push-Url" not in web.get("/explore").headers
