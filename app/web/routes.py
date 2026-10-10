@@ -7,6 +7,8 @@ from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlalchemy.orm import Session
 
+from app.acestream.client import EngineClient, StreamSession
+from app.acestream.content_id import IdKind
 from app.acestream.errors import ContentNotFoundError, EngineError
 from app.db.base import utcnow
 from app.db.models import Channel, Check
@@ -16,6 +18,7 @@ from app.services.errors import NotFoundError, ServiceError
 from app.services.iso import country_name, language_name
 from app.services.listing import DEFAULT_DESCENDING, ChannelQuery, SortKey
 from app.services.screenshots import SCREENSHOTS_SUBDIR
+from app.services.settings import AppSettings
 from app.web.check_routes import start_checks
 from app.web.deps import (
     CheckRunnerDep,
@@ -357,13 +360,34 @@ def channel_play(
     request: Request, session: SessionDep, client: EngineDep, settings: SettingsDep, channel_id: int
 ):
     channel = _get_channel_or_404(session, channel_id)
+    response, stream = play(
+        request,
+        client,
+        settings,
+        channel.content_id,
+        title=channel.title,
+        kind=channel.id_kind,
+    )
+    if stream is not None and channel.id_kind != stream.kind:
+        channel.id_kind = stream.kind  # next time, straight the right way
+        session.commit()
+    return response
+
+
+def play(
+    request: Request,
+    client: EngineClient,
+    settings: AppSettings,
+    content_id: str,
+    *,
+    title: str | None,
+    kind: IdKind | None = None,
+) -> tuple[HTMLResponse, StreamSession | None]:
+    """Opens `content_id` in VLC; the notice for #notices and the session, if it started."""
+    stream = None
     try:
         stream = player.open_in_player(
-            client,
-            channel.content_id,
-            kind=channel.id_kind,
-            title=channel.title,
-            vlc_path=settings.vlc_path,
+            client, content_id, kind=kind, title=title, vlc_path=settings.vlc_path
         )
     except player.VlcNotFoundError:
         error = "No se encontró VLC. Instálalo o indica la ruta de vlc.exe en Ajustes."
@@ -378,16 +402,14 @@ def channel_play(
         error = f"No se pudo abrir VLC: {exc}"
     else:
         error = None
-        if channel.id_kind != stream.kind:
-            channel.id_kind = stream.kind  # next time, straight the right way
-            session.commit()
-    return templates.TemplateResponse(
+    response = templates.TemplateResponse(
         request,
         "channels/_play_result.html",
-        {"channel": channel, "error": error},
+        {"title": title or content_id, "error": error},
         # 503: the player or the engine is not available; htmx shows it (see base.html).
         status_code=503 if error else 200,
     )
+    return response, stream
 
 
 @router.get("/channels/{channel_id}/edit", response_class=HTMLResponse, name="channel_edit")

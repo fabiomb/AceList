@@ -5,6 +5,7 @@ Todos los cambios relevantes del proyecto se registran aquí. Formato basado en 
 ## [Sin publicar]
 
 ### Agregado
+- Playing a channel of a source without adding it (#105): each Explorar row has a play button that opens it in VLC, the same way and with the same messages as the catalog (Content ID or infohash, #100).
 - Removing channels from a source (#104): "Quitar de la lista" in Explorar hides the chosen channels of their sources, and they stay hidden when the source is refreshed or its file uploaded again (kept by Content ID in the new `source_dismissed` table, migration 0007). Fuentes shows how many were removed from each source and "Restaurar quitados" brings them back. The catalog is not touched.
 - Pages in Explorar (#103): 100 channels per page with first, previous, next and last links and "página X de Y", instead of only the first 200. The page goes in the address (`page=`) with the search, and adding channels comes back to the same page; changing a filter starts again at the first one.
 - Choosing several channels in the list (#102): a check box per row and one to choose them all, and a bar with how many are chosen and three actions for them: Verificar, Regenerar capturas and Borrar (the last two ask first). Checks run in the background and every action comes back to the list with its filters.
