@@ -445,3 +445,56 @@ def test_the_typed_address_may_be_local(db, client, respx_mock):
     sources.refresh_source(db, source, client)
 
     assert source.entry_count == 2
+
+
+@pytest.fixture
+def clock(monkeypatch):
+    """`time.monotonic` for the sources module, moved forward by the test."""
+    now = [1000.0]
+    monkeypatch.setattr(sources.time, "monotonic", lambda: now[0])
+    return now
+
+
+def test_a_slow_download_stops_at_the_deadline(db, client, respx_mock, clock):
+    def trickle():
+        for line in M3U.encode().splitlines(keepends=True):
+            clock[0] += 7  # each piece arrives in time, but they add up
+            yield line
+
+    respx_mock.get(URL).mock(return_value=httpx.Response(200, content=trickle()))
+    source = sources.create_source(db, name="Lista", url=URL)
+
+    sources.refresh_source(db, source, client)
+
+    assert source.error_message == "No terminó de descargarse a tiempo."
+    assert source.entry_count is None
+
+
+def test_redirects_count_against_the_deadline(db, client, respx_mock, clock, resolve):
+    def slow_redirect(request):
+        clock[0] += 31
+        return httpx.Response(302, headers={"Location": "https://cdn.test/x.m3u"})
+
+    respx_mock.get(URL).mock(side_effect=slow_redirect)
+    final = respx_mock.get("https://cdn.test/x.m3u").respond(text=M3U)
+    source = sources.create_source(db, name="Lista", url=URL)
+
+    sources.refresh_source(db, source, client)
+
+    assert source.error_message == "No terminó de descargarse a tiempo."
+    assert not final.called
+
+
+def test_each_request_gets_at_most_the_time_left(db, client, respx_mock, clock):
+    seen = []
+
+    def record(request):
+        seen.append(request.extensions["timeout"]["read"])
+        return httpx.Response(200, text=M3U)
+
+    respx_mock.get(URL).mock(side_effect=record)
+    source = sources.create_source(db, name="Lista", url=URL)
+
+    sources.refresh_source(db, source, client)
+
+    assert seen == [sources.FETCH_TIMEOUT] and source.entry_count == 2

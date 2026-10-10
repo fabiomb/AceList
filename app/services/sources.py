@@ -7,6 +7,7 @@ network; a file is read once, when it is uploaded. AceList ships with no sources
 
 import ipaddress
 import socket
+import time
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import PurePath
@@ -28,7 +29,8 @@ from app.services.naming import clean_stream_name, placeholder_title
 
 MAX_SOURCE_BYTES = 5 * 1024 * 1024
 MAX_ENTRIES = 5000  # per source
-FETCH_TIMEOUT = 20.0
+FETCH_TIMEOUT = 20.0  # for each step: connecting, each read…
+FETCH_DEADLINE = 30.0  # for the whole download, redirects included
 MAX_REDIRECTS = 5
 EXPLORE_LIMIT = 200  # rows shown at once; the search narrows the rest
 _NAME_LENGTH = 100
@@ -205,10 +207,15 @@ def fetch_text(client: httpx.Client, url: str) -> str:
     The address the user typed may be anything, even on the local network. A redirect is
     the list's owner choosing, so it is only followed to public addresses: a list on the
     web must not make AceList reach the Ace Stream engine or other machines at home.
+
+    The whole download must end within `FETCH_DEADLINE`, so a server sending a few bytes
+    now and then cannot keep the page waiting.
     """
+    deadline = time.monotonic() + FETCH_DEADLINE
     try:
         for _ in range(MAX_REDIRECTS + 1):
-            with client.stream("GET", url, follow_redirects=False) as response:
+            timeout = min(FETCH_TIMEOUT, _time_left(deadline))
+            with client.stream("GET", url, follow_redirects=False, timeout=timeout) as response:
                 if response.is_redirect:
                     url = _redirect_target(response)
                     continue
@@ -216,6 +223,7 @@ def fetch_text(client: httpx.Client, url: str) -> str:
                     raise SourceFetchError(f"El servidor respondió {response.status_code}.")
                 data = bytearray()
                 for chunk in response.iter_bytes():
+                    _time_left(deadline)
                     data += chunk
                     if len(data) > MAX_SOURCE_BYTES:
                         raise SourceFetchError(
@@ -227,6 +235,13 @@ def fetch_text(client: httpx.Client, url: str) -> str:
     except httpx.HTTPError as exc:
         raise SourceFetchError(f"No se pudo descargar: {exc}") from exc
     raise SourceFetchError(f"Demasiadas redirecciones (más de {MAX_REDIRECTS}).")
+
+
+def _time_left(deadline: float) -> float:
+    left = deadline - time.monotonic()
+    if left <= 0:
+        raise SourceFetchError("No terminó de descargarse a tiempo.")
+    return left
 
 
 def _redirect_target(response: httpx.Response) -> str:
