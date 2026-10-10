@@ -16,10 +16,21 @@
 
 {% if not catalog_empty %}
 {% if rows %}
+{# The row check boxes belong to this form through their `form` attribute. #}
+<form id="selection" class="selection-bar" method="post" action="{{ url_for('channels_selected') }}" data-selection="channel">
+  <input type="hidden" name="next" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}">
+  <span class="selection-count" data-selection-count aria-live="polite">Ningún canal elegido</span>
+  <button type="submit" class="button" name="action" value="check" data-needs-selection disabled>Verificar</button>
+  <button type="submit" class="button" name="action" value="screenshots" data-needs-selection disabled
+          data-confirm="Regenerar las capturas de los canales elegidos: se verifica cada uno y se saca una captura nueva de los que estén activos. Tarda bastante más que una verificación normal. ¿Continuar?">Regenerar capturas</button>
+  <button type="submit" class="button danger-outline" name="action" value="delete" data-needs-selection disabled
+          data-confirm="¿Borrar los canales elegidos, con su historial y sus capturas? No se puede deshacer.">Borrar</button>
+</form>
 <div class="table-wrap">
   <table class="channels">
     <thead>
       <tr>
+        <th scope="col" class="select"><input type="checkbox" form="selection" data-check-all="channel" aria-label="Elegir todos los canales de la lista"></th>
         <th scope="col">Captura</th>
         {{ sort_header("title", "Título") }}
         <th scope="col">Hash</th>
@@ -38,6 +49,7 @@
       {% set channel = row.channel %}
       {% set check = row.check %}
       <tr>
+        <td class="select"><input type="checkbox" form="selection" name="channel" value="{{ channel.id }}" aria-label="Elegir {{ channel.title }}"></td>
         <td class="thumb">
           {% if row.screenshot_url %}
           <img src="{{ row.screenshot_url }}" alt="Captura de {{ channel.title }}" width="96" height="54" loading="lazy">

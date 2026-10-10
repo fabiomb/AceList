@@ -96,15 +96,74 @@
     if (!form) closeSuggestions();
   });
 
+  // Check boxes of a form by name, also those outside it that point to it with `form`.
+  function boxes(form, name) {
+    return Array.from(form.elements).filter(
+      (el) => el.type === "checkbox" && el.name === name && !el.disabled
+    );
+  }
+
   // "Choose all" boxes: data-check-all names the checkboxes of its form it toggles.
   document.addEventListener("change", (event) => {
     const master = event.target.closest("[data-check-all]");
     if (!master || !master.form) return;
-    const name = master.dataset.checkAll;
-    master.form.querySelectorAll(`input[type=checkbox][name="${name}"]`).forEach((box) => {
+    boxes(master.form, master.dataset.checkAll).forEach((box) => {
       box.checked = master.checked;
     });
+    updateSelection(master.form);
   });
+
+  // A selection bar (data-selection names its boxes): how many are chosen, and its
+  // buttons enabled only when there is at least one.
+  function updateSelection(form) {
+    const name = form && form.dataset.selection;
+    if (!name) return;
+    const all = boxes(form, name);
+    const chosen = all.filter((box) => box.checked).length;
+    const count = form.querySelector("[data-selection-count]");
+    if (count) {
+      count.textContent =
+        chosen === 0 ? "Ningún canal elegido"
+        : chosen === 1 ? "1 canal elegido"
+        : `${chosen} canales elegidos`;
+    }
+    form.querySelectorAll("[data-needs-selection]").forEach((button) => {
+      button.disabled = chosen === 0;
+    });
+    Array.from(form.elements)
+      .filter((el) => el.dataset && el.dataset.checkAll === name)
+      .forEach((master) => {
+        master.checked = all.length > 0 && chosen === all.length;
+        master.indeterminate = chosen > 0 && chosen < all.length;
+      });
+  }
+
+  document.addEventListener("change", (event) => {
+    if (event.target.type === "checkbox" && !event.target.dataset.checkAll) {
+      updateSelection(event.target.form);
+    }
+  });
+
+  function initSelections(root) {
+    // The browser may restore checked boxes when going back to the page.
+    root.querySelectorAll("form[data-selection]").forEach(updateSelection);
+  }
+  document.addEventListener("DOMContentLoaded", () => initSelections(document));
+  document.addEventListener("htmx:load", (event) => initSelections(event.target));
+
+  // Buttons with data-confirm ask before submitting their form. Captured before htmx
+  // sees the submit, so cancelling stops a boosted form too.
+  document.addEventListener(
+    "submit",
+    (event) => {
+      const button = event.submitter;
+      if (button && button.dataset.confirm && !window.confirm(button.dataset.confirm)) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+    },
+    true
+  );
 
   // A new page (hx-boost) starts with the dropdown closed.
   document.addEventListener("htmx:beforeHistorySave", closeSuggestions);

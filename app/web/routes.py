@@ -443,6 +443,47 @@ def channel_update(
     return response if engine_up else flash(response, ENGINE_DOWN_SAVED)
 
 
+# What the selection bar of the list can do with the chosen channels.
+SELECTION_ACTIONS = {"check", "screenshots", "delete"}
+
+
+@router.post("/channels/selected", name="channels_selected")
+def channels_selected(
+    request: Request,
+    session: SessionDep,
+    session_factory: SessionFactoryDep,
+    engine_factory: EngineFactoryDep,
+    settings: SettingsDep,
+    runner: CheckRunnerDep,
+    probe: EngineProbeDep,
+    channel: Annotated[list[int] | None, Form()] = None,
+    action: FormField = "",
+    next: FormField = "",
+):
+    """Checks, rechecks with new screenshots or deletes the channels chosen in the list.
+
+    Comes back to `next` (the list with its filters) when it is a path of this app.
+    """
+    if action not in SELECTION_ACTIONS:
+        raise HTTPException(status_code=400, detail="Acción desconocida")
+    response = RedirectResponse(
+        _local_path(next) or request.url_for("channel_list"), status_code=303
+    )
+    # Channels deleted meanwhile (another tab) are skipped, not an error.
+    ids = [i for i in dict.fromkeys(channel or []) if session.get(Channel, i) is not None]
+    if not ids:
+        return response
+    if action == "delete":
+        for channel_id in ids:
+            channels.delete_channel(session, channel_id)
+        return response
+    if probe() is None:
+        return flash(response, ENGINE_DOWN)
+    mode = Screenshots.ALWAYS if action == "screenshots" else Screenshots.NEVER
+    start_checks(runner, ids, session_factory, engine_factory, settings, screenshots=mode)
+    return response
+
+
 @router.get("/channels/{channel_id}/delete", response_class=HTMLResponse, name="channel_delete")
 def channel_delete_confirm(request: Request, session: SessionDep, channel_id: int):
     channel = _get_channel_or_404(session, channel_id)
