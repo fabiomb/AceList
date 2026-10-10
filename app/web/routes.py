@@ -358,8 +358,12 @@ def channel_play(
 ):
     channel = _get_channel_or_404(session, channel_id)
     try:
-        player.open_in_player(
-            client, channel.content_id, title=channel.title, vlc_path=settings.vlc_path
+        stream = player.open_in_player(
+            client,
+            channel.content_id,
+            kind=channel.id_kind,
+            title=channel.title,
+            vlc_path=settings.vlc_path,
         )
     except player.VlcNotFoundError:
         error = "No se encontró VLC. Instálalo o indica la ruta de vlc.exe en Ajustes."
@@ -374,6 +378,9 @@ def channel_play(
         error = f"No se pudo abrir VLC: {exc}"
     else:
         error = None
+        if channel.id_kind != stream.kind:
+            channel.id_kind = stream.kind  # next time, straight the right way
+            session.commit()
     return templates.TemplateResponse(
         request,
         "channels/_play_result.html",

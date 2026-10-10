@@ -6,7 +6,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from app.acestream.client import EngineClient, StreamSession
-from app.acestream.content_id import parse_content_id
+from app.acestream.content_id import IdKind, parse_content_id
 from app.acestream.errors import EngineError
 from app.config import VLC_PATH
 
@@ -41,6 +41,7 @@ def open_in_player(
     client: EngineClient,
     content_id: str,
     *,
+    kind: IdKind | None = None,
     title: str | None = None,
     vlc_path: str | None = None,
     launcher: Callable[..., subprocess.Popen] = subprocess.Popen,
@@ -49,14 +50,15 @@ def open_in_player(
 
     VLC is looked up first, so a missing player never starts an engine session.
     Raises `PlayerError` (or `VlcNotFoundError`) and the engine's `EngineError`s.
-    The session is left running: VLC is now reading it.
+    The session is left running: VLC is now reading it. `kind` is how the engine
+    loaded the identifier before, if known; the returned session says how it did now.
     """
     content_id = parse_content_id(content_id)
     vlc = vlc_path or find_vlc()
     if not vlc:
         raise VlcNotFoundError("VLC not found: install it or set ACELIST_VLC_PATH to vlc.exe")
 
-    stream = client.start_stream(content_id)
+    stream = client.start_stream(content_id, kind)
     if urlsplit(stream.playback_url).scheme not in ("http", "https"):
         _stop_quietly(client, stream)
         raise PlayerError("playback URL must be http or https")

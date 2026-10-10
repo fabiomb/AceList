@@ -1,5 +1,8 @@
+from types import SimpleNamespace
+
 import pytest
 
+from app.acestream.content_id import IdKind
 from app.acestream.errors import ContentNotFoundError, EngineUnavailableError
 from app.services import channels, player
 from app.web import routes
@@ -14,12 +17,16 @@ def opened(monkeypatch):
     class Opened:
         calls = []
         error = None
+        kinds = []  # the kind each call was asked with
+        loaded_as = IdKind.CONTENT_ID  # how the "engine" loads the channel
 
-        def __call__(self, client, content_id, *, title=None, vlc_path=None):
+        def __call__(self, client, content_id, *, kind=None, title=None, vlc_path=None):
             self.calls.append((content_id, title))
+            self.kinds.append(kind)
             self.vlc_path = vlc_path
             if self.error:
                 raise self.error
+            return SimpleNamespace(kind=self.loaded_as)
 
     fake = Opened()
     monkeypatch.setattr(routes.player, "open_in_player", fake)
@@ -78,3 +85,14 @@ def test_play_from_another_site_is_rejected(web, channel, opened):
 
     assert response.status_code == 403
     assert opened.calls == []
+
+
+def test_playing_remembers_how_the_engine_loaded_the_channel(web, db, channel, opened):
+    opened.loaded_as = IdKind.INFOHASH
+
+    web.post(f"/channels/{channel.id}/play")
+    web.post(f"/channels/{channel.id}/play")
+
+    assert opened.kinds == [None, IdKind.INFOHASH]
+    db.refresh(channel)
+    assert channel.id_kind is IdKind.INFOHASH

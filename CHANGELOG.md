@@ -12,6 +12,7 @@ Todos los cambios relevantes del proyecto se registran aquí. Formato basado en 
 
 ### Corregido
 - Reloading Explorar after "Agregar los elegidos" gave 405 Method Not Allowed: the address bar now keeps `/explore` with the same search (#92).
+- Links that carry the torrent's infohash instead of the Content ID (same 40 hex characters) were always "No encontrado", although Ace Player opens them (#100). Checking, playing and naming now ask the engine both ways, as Ace Player does: as a Content ID first and, if the engine cannot load it, as an infohash, with its own 40-second timeout (running out of it counts as not found). The channel remembers the way that worked and tries it first next time (migration 0006 adds `channel.id_kind`); changing its Content ID forgets it. A dead link now takes about 33 seconds to be marked "No encontrado" instead of 5.
 
 ### Seguridad
 - Source downloads no longer follow redirects to loopback, private, link-local, shared, multicast or reserved addresses, nor to schemes other than http/https (#90). Redirects are followed by hand (at most 5), resolving each target first; the address the user types may still be local.

@@ -24,6 +24,7 @@ NOT_FOUND = "3" * 40
 DIES = "4" * 40  # the engine drops in the middle of the check
 SLOW = "5" * 40  # the engine does not answer in time
 GARBLED = "6" * 40  # the engine answers something unexpected
+INFOHASH = "7" * 40  # a link with the torrent's infohash: loads only when asked that way
 
 
 def _session_path(content_id):
@@ -31,10 +32,11 @@ def _session_path(content_id):
 
 
 class SimulatedEngine:
-    """Answers getstream, stat and stop per Content ID, and records stops."""
+    """Answers getstream, stat and stop per Content ID, and records stops and lookups."""
 
     def __init__(self, respx_mock):
         self.stopped = []
+        self.asked = []  # (identifier, "id" / "content_id" / "infohash") for each lookup
         respx_mock.get(f"{ENGINE}/ace/getstream").mock(side_effect=self._getstream)
         respx_mock.get(url__startswith=f"{ENGINE}/ace/stat/").mock(side_effect=self._stat)
         respx_mock.get(url__startswith=f"{ENGINE}/ace/cmd/").mock(side_effect=self._stop)
@@ -46,16 +48,25 @@ class SimulatedEngine:
             }
         )
 
+    def _identifier(self, request, content_id_param):
+        """The identifier asked for, or None if the engine would not load it that way."""
+        params = request.url.params
+        as_infohash = "infohash" in params
+        content_id = params["infohash" if as_infohash else content_id_param]
+        self.asked.append((content_id, "infohash" if as_infohash else content_id_param))
+        # INFOHASH loads only as an infohash; every other identifier only as a Content ID.
+        return content_id if as_infohash == (content_id == INFOHASH) else None
+
     def _media_files(self, request):
-        content_id = request.url.params["content_id"]
-        if content_id == NOT_FOUND:
+        content_id = self._identifier(request, "content_id")
+        if content_id in (None, NOT_FOUND):
             return httpx.Response(200, json={"error": {"message": "cannot get transport file"}})
         name = f"Stream {content_id[:4]} https://ads.example/x"
         return httpx.Response(200, json={"result": {"name": name, "files": []}})
 
     def _getstream(self, request):
-        content_id = request.url.params["id"]
-        if content_id == NOT_FOUND:
+        content_id = self._identifier(request, "id")
+        if content_id in (None, NOT_FOUND):
             return httpx.Response(200, json={"response": None, "error": "failed to load content"})
         if content_id == SLOW:
             raise httpx.ReadTimeout("slow", request=request)
@@ -79,7 +90,7 @@ class SimulatedEngine:
         prefix = request.url.path.split("/")[3]
         if prefix == DIES[:8]:
             raise httpx.ConnectError("engine went away", request=request)
-        if prefix == ALIVE[:8]:
+        if prefix in (ALIVE[:8], INFOHASH[:8]):
             stats = {"status": "dl", "peers": 7, "speed_down": 950, "downloaded": 5_000_000}
         else:
             stats = {"status": "prebuf", "peers": 0, "speed_down": 0, "downloaded": 0}
@@ -290,3 +301,36 @@ def test_imported_untitled_links_get_their_names_in_the_background(
         NOT_FOUND: f"Canal {NOT_FOUND[:8]}",
     }
     assert channels.find_channel_by_content_id(db, NOT_FOUND).title_pending
+
+
+def test_a_link_with_the_infohash_is_checked_and_played_as_an_infohash(
+    web, db, engine, ffmpeg, monkeypatch, wait_for_checks
+):
+    add(web, INFOHASH, "")
+
+    channel = channels.find_channel_by_content_id(db, INFOHASH)
+    db.refresh(channel)
+    assert latest(db, INFOHASH).status is CheckStatus.ALIVE
+    assert channel.title == "Stream 7777" and channel.id_kind == "infohash"
+    # Unknown at first: the name lookup tried both ways, then the check went straight.
+    assert engine.asked == [
+        (INFOHASH, "content_id"),
+        (INFOHASH, "infohash"),
+        (INFOHASH, "infohash"),
+    ]
+
+    engine.asked.clear()
+    web.post(f"/channels/{channel.id}/check")
+    wait_for_checks()
+    monkeypatch.setattr("app.services.player.find_vlc", lambda: "vlc")
+    monkeypatch.setattr("app.services.player.subprocess.Popen", lambda *a, **k: None)
+    web.post(f"/channels/{channel.id}/play")
+
+    assert engine.asked == [(INFOHASH, "infohash"), (INFOHASH, "infohash")]
+
+
+def test_a_dead_link_is_asked_both_ways(web, db, engine, ffmpeg):
+    add(web, NOT_FOUND, "Muerto")
+
+    assert engine.asked == [(NOT_FOUND, "id"), (NOT_FOUND, "infohash")]
+    assert channels.find_channel_by_content_id(db, NOT_FOUND).id_kind is None

@@ -1,10 +1,10 @@
 import asyncio
 import time
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from app.acestream.client import EngineClient, StreamSession
-from app.acestream.content_id import parse_content_id
+from app.acestream.content_id import IdKind, parse_content_id
 from app.acestream.errors import ContentNotFoundError, EngineError, EngineUnavailableError
 from app.db.models import CheckStatus
 
@@ -30,6 +30,8 @@ class VerificationResult:
     speed_down: int | None = None
     infohash: str | None = None
     error_message: str | None = None
+    # How the engine loaded the identifier; None when it could not load it.
+    kind: IdKind | None = None
 
 
 def probe(
@@ -74,6 +76,7 @@ def verify(
     content_id: str,
     settings: VerificationSettings | None = None,
     *,
+    kind: IdKind | None = None,
     on_alive: Callable[[StreamSession], None] | None = None,
     sleep: Callable[[float], None] = time.sleep,
     clock: Callable[[], float] = time.monotonic,
@@ -86,15 +89,17 @@ def verify(
     nothing about the channel, so it must not be stored as the channel's result.
     `on_alive` runs while the session is still playing, which is the only moment a
     screenshot can be taken; exceptions it raises propagate.
+    `kind` is how the engine loaded the identifier before, if known (see
+    `EngineClient.start_stream`).
     """
     settings = settings or VerificationSettings()
     content_id = parse_content_id(content_id)
     try:
-        with client.stream(content_id) as session:
+        with client.stream(content_id, kind) as session:
             result = probe(client, session, settings, sleep=sleep, clock=clock)
             if on_alive is not None and result.status is CheckStatus.ALIVE:
                 on_alive(session)
-            return result
+            return replace(result, kind=session.kind)
     except ContentNotFoundError:
         return VerificationResult(CheckStatus.NOT_FOUND)
     except EngineUnavailableError:

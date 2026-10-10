@@ -5,7 +5,7 @@ import httpx
 import pytest
 
 from app.acestream.client import EngineClient
-from app.acestream.content_id import InvalidContentIdError
+from app.acestream.content_id import IdKind, InvalidContentIdError
 from app.acestream.errors import EngineUnavailableError
 from app.db.models import CheckStatus
 from app.services.verification import (
@@ -219,7 +219,7 @@ def test_unknown_content_is_not_found_and_nothing_to_stop(client, clock, respx_m
 
     assert result.status is CheckStatus.NOT_FOUND
     assert (result.peers, result.infohash) == (None, None)
-    assert respx_mock.calls.call_count == 1
+    assert respx_mock.calls.call_count == 2  # as a Content ID, then as an infohash
 
 
 def test_engine_down_is_not_a_channel_result(client, clock, respx_mock):
@@ -333,3 +333,35 @@ def test_a_failing_on_alive_still_stops_the_session(client, clock, engine):
         verify(client, HASH, sleep=clock.sleep, clock=clock, on_alive=boom)
 
     assert engine.stop.call_count == 1
+
+
+# how the identifier was loaded
+
+
+def test_the_result_says_how_the_engine_loaded_the_identifier(client, clock, engine):
+    engine.stats(stat("prebuf", peers=0))
+
+    assert run(client, clock).kind is IdKind.CONTENT_ID
+
+
+def test_a_known_kind_is_passed_to_the_engine(client, clock, respx_mock):
+    route = respx_mock.get(f"{BASE}/ace/getstream", params={"infohash": HASH}).respond(
+        json=GETSTREAM
+    )
+    respx_mock.get(f"{BASE}/ace/cmd/{PATH}").respond(json={"response": "ok", "error": None})
+    respx_mock.get(f"{BASE}/ace/stat/{PATH}").respond(json=stat("dl", peers=2, downloaded=1000))
+
+    result = verify(client, HASH, kind=IdKind.INFOHASH, sleep=clock.sleep, clock=clock)
+
+    assert result.status is CheckStatus.ALIVE and result.kind is IdKind.INFOHASH
+    assert route.call_count == 1
+
+
+def test_content_that_does_not_load_has_no_kind(client, clock, respx_mock):
+    respx_mock.get(f"{BASE}/ace/getstream").respond(
+        json={"response": None, "error": "failed to load content"}
+    )
+
+    result = run(client, clock)
+
+    assert result.status is CheckStatus.NOT_FOUND and result.kind is None

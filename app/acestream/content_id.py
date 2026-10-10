@@ -1,4 +1,5 @@
 import re
+from enum import StrEnum
 
 _SCHEME = "acestream://"
 _CONTENT_ID = re.compile(r"[0-9a-f]{40}", re.IGNORECASE | re.ASCII)
@@ -6,6 +7,13 @@ _CONTENT_ID = re.compile(r"[0-9a-f]{40}", re.IGNORECASE | re.ASCII)
 
 class InvalidContentIdError(ValueError):
     pass
+
+
+class IdKind(StrEnum):
+    """What a 40-hex identifier is for the engine: both look the same in a link."""
+
+    CONTENT_ID = "content_id"
+    INFOHASH = "infohash"  # the torrent's infohash, which some links carry instead
 
 
 def parse_content_id(value: str) -> str:
