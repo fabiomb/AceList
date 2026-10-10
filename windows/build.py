@@ -1,7 +1,7 @@
 """Builds AceList.exe and its zip: `python windows/build.py`.
 
 Needs the `build` extra (`pip install -e ".[build]"`). Leaves in `dist/`:
-- `AceList/` with `AceList.exe` and `_internal/`;
+- `AceList/` with `AceList.exe`, `_internal/` and `LICENSE.txt`;
 - `AceList-<version>-win64.zip` and `AceList-<version>-win64.zip.sha256`.
 """
 
@@ -48,6 +48,8 @@ def main() -> Path:
         check=True,
         cwd=ROOT,
     )
+    # The license travels with the program; .txt so Windows opens it with a double click.
+    shutil.copyfile(ROOT / "LICENSE", DIST / "AceList" / "LICENSE.txt")
     name = f"AceList-{version()}-win64"
     archive = Path(shutil.make_archive(str(DIST / name), "zip", root_dir=DIST, base_dir="AceList"))
     checksum = archive.with_name(archive.name + ".sha256")
