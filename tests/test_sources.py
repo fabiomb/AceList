@@ -1,4 +1,5 @@
 import json
+import socket
 
 import httpx
 import pytest
@@ -194,7 +195,7 @@ def test_refresh_sources_skips_disabled_ones(db, client, respx_mock):
 def test_make_client_identifies_aceList():
     with sources.make_client() as c:
         assert c.headers["User-Agent"].startswith("AceList/")
-        assert c.follow_redirects is True
+        assert c.follow_redirects is False  # fetch_text checks each redirect
 
 
 @pytest.fixture
@@ -327,4 +328,120 @@ def test_file_sources_are_never_downloaded(db, client, respx_mock):
 
     assert sources.refresh_source(db, source, client) is source
     assert sources.refresh_sources(db, client) == []
+    assert source.entry_count == 2
+
+
+PUBLIC_IP = "93.184.216.34"
+
+
+@pytest.fixture
+def resolve(monkeypatch):
+    """Host names resolve to what the test says (a public address by default)."""
+    table = {}
+
+    def fake(host, port):
+        return [host] if host[0].isdigit() or ":" in host else table.get(host, [PUBLIC_IP])
+
+    monkeypatch.setattr(sources, "_resolve", fake)
+    return table
+
+
+def test_redirects_to_public_addresses_are_followed(db, client, respx_mock, resolve):
+    respx_mock.get(URL).respond(301, headers={"Location": "/nueva.m3u"})
+    respx_mock.get("https://lists.test/nueva.m3u").respond(
+        302, headers={"Location": "https://cdn.test/final.m3u"}
+    )
+    respx_mock.get("https://cdn.test/final.m3u").respond(text=M3U)
+    source = sources.create_source(db, name="Lista", url=URL)
+
+    sources.refresh_source(db, source, client)
+
+    assert source.error_message is None and source.entry_count == 2
+
+
+@pytest.mark.parametrize(
+    ("location", "addresses", "message"),
+    [
+        ("http://127.0.0.1:6878/webui/api/service", None, "dirección local"),
+        ("http://[::1]/x", None, "dirección local"),
+        ("http://[::ffff:127.0.0.1]/x", None, "dirección local"),
+        ("http://169.254.169.254/latest", None, "dirección local"),
+        ("http://router.test/x", ["192.168.1.1"], "dirección local"),
+        ("http://mixto.test/x", [PUBLIC_IP, "10.0.0.2"], "dirección local"),
+        ("ftp://lists.test/x.m3u", None, "no es http:// ni https://"),
+    ],
+)
+def test_redirects_to_local_or_odd_addresses_are_refused(
+    db, client, respx_mock, resolve, location, addresses, message
+):
+    if addresses:
+        resolve[httpx.URL(location).host] = addresses
+    respx_mock.get(URL).respond(302, headers={"Location": location})
+    source = sources.create_source(db, name="Lista", url=URL)
+
+    sources.refresh_source(db, source, client)
+
+    assert message in source.error_message
+    assert source.entry_count is None
+    assert [str(call.request.url) for call in respx_mock.calls] == [URL]
+
+
+def test_redirect_loops_stop(db, client, respx_mock, resolve):
+    respx_mock.get(URL).respond(302, headers={"Location": URL})
+    source = sources.create_source(db, name="Lista", url=URL)
+
+    sources.refresh_source(db, source, client)
+
+    assert source.error_message == "Demasiadas redirecciones (más de 5)."
+
+
+def test_redirect_to_an_unknown_host(db, client, respx_mock, monkeypatch):
+    def fail(*args, **kwargs):
+        raise socket.gaierror("not found")
+
+    monkeypatch.setattr(sources.socket, "getaddrinfo", fail)
+    respx_mock.get(URL).respond(302, headers={"Location": "https://nadie.test/x"})
+    source = sources.create_source(db, name="Lista", url=URL)
+
+    sources.refresh_source(db, source, client)
+
+    assert source.error_message == "La lista redirige a nadie.test, que no se encuentra."
+
+
+def test_resolve_uses_the_system_resolver(monkeypatch):
+    monkeypatch.setattr(
+        sources.socket,
+        "getaddrinfo",
+        lambda host, port, type: [
+            (2, 1, 6, "", (PUBLIC_IP, port)),
+            (23, 1, 6, "", ("::1", port, 0, 0)),
+        ],
+    )
+
+    assert sources._resolve("lists.test", 443) == [PUBLIC_IP, "::1"]
+    assert sources._resolve("10.0.0.1", 80) == ["10.0.0.1"]
+
+
+@pytest.mark.parametrize(
+    ("address", "public"),
+    [
+        (PUBLIC_IP, True),
+        ("2606:4700::1111", True),
+        ("100.64.0.1", False),
+        ("224.0.0.1", False),
+        ("0.0.0.0", False),
+        ("fe80::1%3", False),
+        ("::ffff:10.0.0.1", False),
+    ],
+)
+def test_is_public(address, public):
+    assert sources._is_public(address) is public
+
+
+def test_the_typed_address_may_be_local(db, client, respx_mock):
+    respx_mock.get("http://192.168.1.5/lista.m3u").respond(text=M3U)
+    source = sources.create_source(db, name="Casa", url="http://192.168.1.5/lista.m3u")
+
+    sources.refresh_source(db, source, client)
+
     assert source.entry_count == 2

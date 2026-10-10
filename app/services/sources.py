@@ -5,6 +5,8 @@ and stores what it found in `source_entry`, so exploring and searching never wai
 network; a file is read once, when it is uploaded. AceList ships with no sources.
 """
 
+import ipaddress
+import socket
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import PurePath
@@ -27,6 +29,7 @@ from app.services.naming import clean_stream_name, placeholder_title
 MAX_SOURCE_BYTES = 5 * 1024 * 1024
 MAX_ENTRIES = 5000  # per source
 FETCH_TIMEOUT = 20.0
+MAX_REDIRECTS = 5
 EXPLORE_LIMIT = 200  # rows shown at once; the search narrows the rest
 _NAME_LENGTH = 100
 _URL_LENGTH = 1000
@@ -188,31 +191,76 @@ def _text(value: object, length: int) -> str | None:
 
 
 def make_client() -> httpx.Client:
+    # Redirects are followed by `fetch_text`, which checks where each one goes.
     return httpx.Client(
         timeout=FETCH_TIMEOUT,
-        follow_redirects=True,
+        follow_redirects=False,
         headers={"User-Agent": f"AceList/{__version__}"},
     )
 
 
 def fetch_text(client: httpx.Client, url: str) -> str:
-    """The list at `url` as text, refusing anything over `MAX_SOURCE_BYTES`."""
+    """The list at `url` as text, refusing anything over `MAX_SOURCE_BYTES`.
+
+    The address the user typed may be anything, even on the local network. A redirect is
+    the list's owner choosing, so it is only followed to public addresses: a list on the
+    web must not make AceList reach the Ace Stream engine or other machines at home.
+    """
     try:
-        with client.stream("GET", url) as response:
-            if response.status_code >= 400:
-                raise SourceFetchError(f"El servidor respondió {response.status_code}.")
-            data = bytearray()
-            for chunk in response.iter_bytes():
-                data += chunk
-                if len(data) > MAX_SOURCE_BYTES:
-                    raise SourceFetchError(
-                        f"La lista supera los {MAX_SOURCE_BYTES // (1024 * 1024)} MB."
-                    )
+        for _ in range(MAX_REDIRECTS + 1):
+            with client.stream("GET", url, follow_redirects=False) as response:
+                if response.is_redirect:
+                    url = _redirect_target(response)
+                    continue
+                if response.status_code >= 400:
+                    raise SourceFetchError(f"El servidor respondió {response.status_code}.")
+                data = bytearray()
+                for chunk in response.iter_bytes():
+                    data += chunk
+                    if len(data) > MAX_SOURCE_BYTES:
+                        raise SourceFetchError(
+                            f"La lista supera los {MAX_SOURCE_BYTES // (1024 * 1024)} MB."
+                        )
+                return decode_text(bytes(data))
     except httpx.TimeoutException as exc:
         raise SourceFetchError("No respondió a tiempo.") from exc
     except httpx.HTTPError as exc:
         raise SourceFetchError(f"No se pudo descargar: {exc}") from exc
-    return decode_text(bytes(data))
+    raise SourceFetchError(f"Demasiadas redirecciones (más de {MAX_REDIRECTS}).")
+
+
+def _redirect_target(response: httpx.Response) -> str:
+    """Where a redirect points, if it is safe to follow; raises `SourceFetchError` if not."""
+    target = response.url.join(response.headers.get("location", ""))
+    if target.scheme not in ("http", "https") or not target.host:
+        raise SourceFetchError("La lista redirige a una dirección que no es http:// ni https://.")
+    port = target.port or (443 if target.scheme == "https" else 80)
+    if not all(_is_public(address) for address in _resolve(target.host, port)):
+        raise SourceFetchError("La lista redirige a una dirección local; no se sigue.")
+    return str(target)
+
+
+def _resolve(host: str, port: int) -> list[str]:
+    """Every address `host` resolves to; replaced in tests."""
+    try:
+        ipaddress.ip_address(host)
+    except ValueError:
+        pass
+    else:
+        return [host]
+    try:
+        found = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+    except OSError as exc:
+        raise SourceFetchError(f"La lista redirige a {host}, que no se encuentra.") from exc
+    return [info[4][0] for info in found]
+
+
+def _is_public(address: str) -> bool:
+    ip = ipaddress.ip_address(address.split("%", 1)[0])  # IPv6 zone ids are not addresses
+    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
+        ip = ip.ipv4_mapped
+    # `is_global` leaves out loopback, private, link-local, shared and reserved ranges.
+    return ip.is_global and not ip.is_multicast
 
 
 def decode_text(data: bytes) -> str:
