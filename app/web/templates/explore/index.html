@@ -6,6 +6,17 @@
 
 {% block title %}Explorar · AceList{% endblock %}
 
+{# Links to the pages of the search; nothing when it fits in one. #}
+{% macro pager() %}
+{% if found.pages > 1 %}
+<nav class="pager" aria-label="Páginas">
+  {% if found.page > 1 %}<a href="{{ page_url(1) }}" aria-label="Primera página">«</a> <a href="{{ page_url(found.page - 1) }}" rel="prev">‹ Anterior</a>{% endif %}
+  <span>Página {{ found.page }} de {{ found.pages }}</span>
+  {% if found.page < found.pages %}<a href="{{ page_url(found.page + 1) }}" rel="next">Siguiente ›</a> <a href="{{ page_url(found.pages) }}" aria-label="Última página">»</a>{% endif %}
+</nav>
+{% endif %}
+{% endmacro %}
+
 {% block content %}
 <div class="page-head">
   <h1>Explorar</h1>
@@ -72,14 +83,16 @@
 
 <p class="result-count">
   {{ found.total }} {{ "canal" if found.total == 1 else "canales" }}
-  {%- if found.total > found.rows | length %}: se muestran los primeros {{ found.rows | length }}; afina la búsqueda para ver el resto{% endif %}.
+  {%- if found.pages > 1 %} · página {{ found.page }} de {{ found.pages }}{% endif %}.
 </p>
+{{ pager() }}
 
 {% if found.rows %}
 <form method="post" action="{{ url_for('explore_add') }}" hx-disabled-elt="find button[type=submit]">
   <input type="hidden" name="q" value="{{ query.text or '' }}">
   <input type="hidden" name="source" value="{{ query.source_id or '' }}">
   <input type="hidden" name="new" value="{{ '1' if query.only_new else '' }}">
+  <input type="hidden" name="page" value="{{ found.page }}">
   <div class="table-wrap">
     <table class="channels explore">
       <thead>
@@ -114,6 +127,7 @@
       </tbody>
     </table>
   </div>
+  {{ pager() }}
 
   <div class="explore-add">
     <div class="field">

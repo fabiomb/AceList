@@ -245,10 +245,24 @@ def test_explore_filters(db, explored):
     assert names(db) == [("Dos", "Lista"), ("Uno HD", "Lista")]
 
 
-def test_explore_limits_the_rows_but_counts_them_all(db, explored):
-    found = sources.explore(db, ExploreQuery(), limit=2)
+def test_explore_pages_the_rows_but_counts_them_all(db, explored):
+    pages = [sources.explore(db, ExploreQuery(page=n), page_size=3) for n in (1, 2, 7, 0)]
 
-    assert len(found.rows) == 2 and found.total == 4
+    assert [len(found.rows) for found in pages] == [3, 1, 1, 3]
+    assert [(found.page, found.pages, found.total) for found in pages] == [
+        (1, 2, 4),
+        (2, 2, 4),
+        (2, 2, 4),  # past the end: the last page
+        (1, 2, 4),
+    ]
+    seen = [row.entry.id for found in pages[:2] for row in found.rows]
+    assert len(set(seen)) == 4
+
+
+def test_explore_without_matches_has_one_empty_page(db, explored):
+    found = sources.explore(db, ExploreQuery(text="nada de nada"))
+
+    assert (found.rows, found.total, found.page, found.pages) == ([], 0, 1, 1)
 
 
 def test_add_entries_creates_new_channels_only(db, explored):

@@ -1,3 +1,4 @@
+from dataclasses import replace
 from typing import Annotated
 
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
@@ -28,11 +29,18 @@ FormField = Annotated[str, Form()]
 
 def _explore_query(request: Request) -> ExploreQuery:
     params = request.query_params
-    source = params.get("source", "")
+    return _query(
+        params.get("q", ""), params.get("source", ""), params.get("new", ""), params.get("page", "")
+    )
+
+
+def _query(q: str, source: str, new: str, page: str) -> ExploreQuery:
+    """The search from the URL or from the add form's hidden fields."""
     return ExploreQuery(
-        text=params.get("q", "").strip() or None,
+        text=q.strip() or None,
         source_id=int(source) if source.isdigit() else None,
-        only_new=params.get("new") == "1",
+        only_new=new == "1",
+        page=int(page) if page.isdigit() and 0 < len(page) < 7 else 1,
     )
 
 
@@ -46,16 +54,18 @@ def _render_explore(
     error: str | None = None,
 ) -> HTMLResponse:
     all_sources = sources.list_sources(session)
+    found = sources.explore(session, query)
+    query = replace(query, page=found.page)  # an out of range page shows the last one
     response = templates.TemplateResponse(
         request,
         "explore/index.html",
         {
             "query": query,
-            "found": sources.explore(session, query, limit=sources.EXPLORE_LIMIT),
+            "found": found,
+            "page_url": lambda page: _explore_url(request, replace(query, page=page)),
             "sources": all_sources,
             "has_enabled": any(source.enabled for source in all_sources),
             "categories": categories.list_categories(session),
-            "limit": sources.EXPLORE_LIMIT,
             "result": result,
             "engine_down": engine_down,
             "error": error,
@@ -74,6 +84,7 @@ def _explore_url(request: Request, query: ExploreQuery) -> str:
         "q": query.text or "",
         "source": "" if query.source_id is None else str(query.source_id),
         "new": "1" if query.only_new else "",
+        "page": str(query.page) if query.page > 1 else "",
     }
     url = request.url_for("explore")
     return str(url.include_query_params(**{k: v for k, v in params.items() if v}))
@@ -99,13 +110,10 @@ def explore_add(
     q: FormField = "",
     source: FormField = "",
     new: FormField = "",
+    page: FormField = "",
 ):
-    # The page comes back with the search the user was looking at.
-    query = ExploreQuery(
-        text=q.strip() or None,
-        source_id=int(source) if source.isdigit() else None,
-        only_new=new == "1",
-    )
+    # The page comes back with the search (and the page of it) the user was looking at.
+    query = _query(q, source, new, page)
     if not entry:
         return _render_explore(request, session, query, error="Elige al menos un canal.")
     chosen = int(category_id) if category_id.isdigit() else None

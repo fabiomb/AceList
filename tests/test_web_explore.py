@@ -119,14 +119,45 @@ def test_explore_filters_come_from_the_url(web, db, listed):
     assert "Quitar filtros" in nothing
 
 
-def test_explore_says_when_it_shows_only_some(web, db, listed, monkeypatch):
+def test_explore_has_pages(web, db, listed, monkeypatch):
     from app.services import sources
 
-    monkeypatch.setattr(sources, "EXPLORE_LIMIT", 1)
+    monkeypatch.setattr(sources, "PAGE_SIZE", 1)
 
-    page = web.get("/explore").text
+    first = web.get("/explore?q=&new=").text
+    second = web.get("/explore?page=2").text
+    beyond = web.get("/explore?page=99").text
+    one_page = web.get("/explore?q=uno").text
 
-    assert "se muestran los primeros 1" in page
+    assert "página 1 de 2" in first and first.count('class="pager"') == 2
+    assert 'href="http://127.0.0.1/explore?page=2" rel="next"' in first
+    assert "Anterior" not in first
+    assert "Uno HD" in second and "Dos" not in second.split('class="channels explore"')[1]
+    assert 'href="http://127.0.0.1/explore" rel="prev"' in second
+    assert "página 2 de 2" in beyond and 'name="page" value="2"' in beyond
+    assert 'class="pager"' not in one_page
+
+
+def test_pages_keep_the_search(web, db, listed, monkeypatch):
+    from app.services import sources
+
+    monkeypatch.setattr(sources, "PAGE_SIZE", 1)
+
+    page = web.get("/explore?q=o&source=1").text
+
+    assert 'href="http://127.0.0.1/explore?q=o&amp;source=1&amp;page=2"' in page
+
+
+def test_adding_from_a_page_comes_back_to_it(web, db, listed, engine_down, monkeypatch):
+    from app.services import sources
+
+    monkeypatch.setattr(sources, "PAGE_SIZE", 1)
+
+    response = web.post(
+        "/explore/add", data={"entry": [entry_id(db, "Uno HD")], "q": "", "page": "2"}
+    )
+
+    assert response.headers["HX-Push-Url"] == "http://127.0.0.1/explore?page=2"
 
 
 def test_adding_entries_creates_channels_and_keeps_the_search(web, db, listed, engine_down):
