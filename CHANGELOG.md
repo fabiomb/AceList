@@ -4,13 +4,19 @@ Todos los cambios relevantes del proyecto se registran aquí. Formato basado en 
 
 ## [Sin publicar]
 
+## [1.5.0] - 2026-10-11
+
+Fuentes desde un archivo local, selección múltiple en el listado, más herramientas en Explorar (páginas, quitar, reproducir y verificar sin importar), enlaces con infohash y los arreglos de la revisión de #88.
+
+Incluye las migraciones `0005` a `0008` (fuentes de archivo, forma del identificador de cada canal, canales quitados de una fuente y verificaciones desde Explorar), que se aplican solas al abrir AceList con el ejecutable o con `start.bat`.
+
 ### Agregado
-- Checking a channel of a source without adding it (#106): Explorar has a Estado column with a check button per row that runs the same check as the catalog and shows the outcome (status, peers, when) in the row. It is kept on the source entry, also across refreshes (migration 0008). With Ace Stream off it says so and stores nothing.
-- Playing a channel of a source without adding it (#105): each Explorar row has a play button that opens it in VLC, the same way and with the same messages as the catalog (Content ID or infohash, #100).
-- Removing channels from a source (#104): "Quitar de la lista" in Explorar hides the chosen channels of their sources, and they stay hidden when the source is refreshed or its file uploaded again (kept by Content ID in the new `source_dismissed` table, migration 0007). Fuentes shows how many were removed from each source and "Restaurar quitados" brings them back. The catalog is not touched.
-- Pages in Explorar (#103): 100 channels per page with first, previous, next and last links and "página X de Y", instead of only the first 200. The page goes in the address (`page=`) with the search, and adding channels comes back to the same page; changing a filter starts again at the first one.
-- Choosing several channels in the list (#102): a check box per row and one to choose them all, and a bar with how many are chosen and three actions for them: Verificar, Regenerar capturas and Borrar (the last two ask first). Checks run in the background and every action comes back to the list with its filters.
 - Sources from a local file (#94): the "add a source" form takes a web address or a file from this computer (`.m3u`, `.m3u8`, `.txt` or an AceList `.json` export, same 5 MB / 5000 channel limits), chosen or dragged onto the drop zone; on Explorar a file dropped anywhere on the page opens the form with it. The source is named after the file unless a name is typed; uploading again under the same name replaces its channels. File sources show "Archivo local" and are never downloaded. Migration 0005 makes `source.url` nullable.
+- Choosing several channels in the list (#102): a check box per row and one to choose them all, and a bar with how many are chosen and three actions for them: Verificar, Regenerar capturas and Borrar (the last two ask first). Checks run in the background and every action comes back to the list with its filters.
+- Pages in Explorar (#103): 100 channels per page with first, previous, next and last links and "página X de Y", instead of only the first 200. The page goes in the address (`page=`) with the search, and adding channels comes back to the same page; changing a filter starts again at the first one.
+- Removing channels from a source (#104): "Quitar de la lista" in Explorar hides the chosen channels of their sources, and they stay hidden when the source is refreshed or its file uploaded again (kept by Content ID in the new `source_dismissed` table, migration 0007). Fuentes shows how many were removed from each source and "Restaurar quitados" brings them back. The catalog is not touched.
+- Playing a channel of a source without adding it (#105): each Explorar row has a play button that opens it in VLC, the same way and with the same messages as the catalog (Content ID or infohash, #100).
+- Checking a channel of a source without adding it (#106): Explorar has a Estado column with a check button per row that runs the same check as the catalog and shows the outcome (status, peers, when) in the row. It is kept on the source entry, also across refreshes (migration 0008). With Ace Stream off it says so and stores nothing.
 
 ### Cambiado
 - The top bar search asks the database for the 8 channels it shows, a count of all the matches and the screenshots of those 8 only, instead of every match and every screenshot on each keystroke (#93).
@@ -118,7 +124,8 @@ Primera versión completa: catálogo, verificación, interfaz web, reproducción
 - Integration tests (#21): `tests/test_integration.py` drives the web app end to end against an engine simulated over HTTP, with a different behavior per Content ID: alive (with a real `capture_screenshot` run on a fake ffmpeg), no peers, unknown hash, engine down, timeout, engine dropping mid-check, unexpected answers, missing ffmpeg, a mixed bulk import and a link that dies. CI now measures coverage with `pytest-cov` and fails below 95% (99% when set). Tests run with their own temporary data directory.
 - Usage documentation and Windows launcher (#22): the README covers requirements, installation, use, channel states, settings, security and troubleshooting. `start.bat` / `start.ps1` create the virtual environment on first run (reinstalling only when `pyproject.toml` changes), apply the migrations, start the server and open the browser once it answers (`-Port`, `-NoBrowser`); if AceList is already running they only open the browser. The server port is configurable with `ACELIST_PORT`.
 
-[Sin publicar]: https://github.com/fabiomb/AceList/compare/v1.4.0...HEAD
+[Sin publicar]: https://github.com/fabiomb/AceList/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/fabiomb/AceList/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/fabiomb/AceList/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/fabiomb/AceList/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/fabiomb/AceList/compare/v1.1.0...v1.2.0

@@ -2,7 +2,7 @@
 
 Catálogo local de enlaces Acestream. Valida el Content ID, comprueba si hay peers, intenta capturar una imagen del stream y permite abrir el canal en VLC. Guarda la fecha de cada verificación porque los enlaces mueren y se reemplazan.
 
-> Versión **1.4.0**. Ver [CHANGELOG.md](CHANGELOG.md) y [plan.md](plan.md).
+> Versión **1.5.0**. Ver [CHANGELOG.md](CHANGELOG.md) y [plan.md](plan.md).
 
 ## Funcionalidades
 
