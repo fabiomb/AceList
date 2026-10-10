@@ -50,6 +50,7 @@ def _render_explore(
     query: ExploreQuery,
     *,
     result=None,
+    removed: int | None = None,
     engine_down: bool = False,
     error: str | None = None,
 ) -> HTMLResponse:
@@ -67,6 +68,7 @@ def _render_explore(
             "has_enabled": any(source.enabled for source in all_sources),
             "categories": categories.list_categories(session),
             "result": result,
+            "removed": removed,
             "engine_down": engine_down,
             "error": error,
         },
@@ -145,6 +147,24 @@ def explore_add(
     return _render_explore(request, session, query, result=result)
 
 
+@router.post("/remove", response_class=HTMLResponse, name="explore_remove")
+def explore_remove(
+    request: Request,
+    session: SessionDep,
+    entry: Annotated[list[int] | None, Form()] = None,
+    q: FormField = "",
+    source: FormField = "",
+    new: FormField = "",
+    page: FormField = "",
+):
+    """Removes the chosen channels from their sources (see `sources.dismiss_entries`)."""
+    query = _query(q, source, new, page)
+    if not entry:
+        return _render_explore(request, session, query, error="Elige al menos un canal.")
+    removed = sources.dismiss_entries(session, entry)
+    return _render_explore(request, session, query, removed=removed)
+
+
 def _render_sources(
     request: Request, session: Session, *, values=None, errors=None
 ) -> HTMLResponse:
@@ -153,6 +173,7 @@ def _render_sources(
         "explore/sources.html",
         {
             "sources": sources.list_sources(session),
+            "dismissed": sources.dismissed_counts(session),
             "values": values or {},
             "errors": errors or {},
         },
@@ -235,6 +256,13 @@ def source_refresh(request: Request, session: SessionDep, source_id: int):
     source = _source_or_404(session, source_id)
     with sources.make_client() as client:
         sources.refresh_source(session, source, client)
+    return _to_sources(request)
+
+
+@router.post("/sources/{source_id}/restore", name="source_restore")
+def source_restore(request: Request, session: SessionDep, source_id: int):
+    _source_or_404(session, source_id)
+    sources.restore_dismissed(session, source_id)
     return _to_sources(request)
 
 

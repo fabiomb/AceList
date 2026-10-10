@@ -40,7 +40,8 @@
           {% if source.enabled %}<a href="{{ url_for('explore') }}?source={{ source.id }}">{{ source.name }}</a>{% else %}{{ source.name }} <span class="status status-unchecked">Desactivada</span>{% endif %}
         </td>
         <td class="url">{% if source.url %}<code title="{{ source.url }}">{{ source.url | truncate(60) }}</code>{% else %}<span class="hint">Archivo local</span>{% endif %}</td>
-        <td class="num">{{ source.entry_count if source.entry_count is not none else "—" }}</td>
+        <td class="num">{{ source.entry_count if source.entry_count is not none else "—" }}
+          {%- if dismissed.get(source.id) %}<br><span class="hint">{{ dismissed[source.id] }} {{ "quitado" if dismissed[source.id] == 1 else "quitados" }}</span>{% endif %}</td>
         <td>
           {% if source.fetched_at %}<span title="{{ source.fetched_at | localtime }}">{{ source.fetched_at | ago }}</span>{% else %}Nunca{% endif %}
           {% if source.error_message %}<br><span class="status status-error" title="{{ source.error_message }}">Error</span> <span class="hint">{{ source.error_message }}</span>{% endif %}
@@ -49,6 +50,11 @@
           {% if source.url %}
           <form method="post" action="{{ url_for('source_refresh', source_id=source.id) }}" hx-disabled-elt="find button">
             <button type="submit" class="button">Actualizar</button>
+          </form>
+          {% endif %}
+          {% if dismissed.get(source.id) %}
+          <form method="post" action="{{ url_for('source_restore', source_id=source.id) }}">
+            <button type="submit" class="button" title="Vuelve a mostrar en Explorar los canales que quitaste de esta fuente">Restaurar quitados</button>
           </form>
           {% endif %}
           <form method="post" action="{{ url_for('source_toggle', source_id=source.id) }}">

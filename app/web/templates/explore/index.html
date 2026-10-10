@@ -46,6 +46,9 @@
 </section>
 {% endif %}
 
+{% if removed is not none %}
+<p class="notice notice-ok" role="status">{{ removed }} {{ "canal quitado" if removed == 1 else "canales quitados" }} de sus fuentes. Siguen ocultos al actualizarlas; puedes restaurarlos en <a href="{{ url_for('sources_page') }}">Fuentes</a>.</p>
+{% endif %}
 {% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
 
 {% if not sources %}
@@ -145,7 +148,9 @@
     </div>
     <div class="actions">
       <button type="submit" class="button primary">Agregar los elegidos</button>
-      <span class="busy" aria-live="polite">Agregando…</span>
+      <button type="submit" class="button danger-outline" formaction="{{ url_for('explore_remove') }}"
+              title="Los oculta de Explorar, también al actualizar la fuente">Quitar de la lista</button>
+      <span class="busy" aria-live="polite">Un momento…</span>
     </div>
   </div>
   <p class="hint">Los canales agregados se verifican en segundo plano, como en «Importar». Sin nombre en la lista, se usa el que publica el stream.</p>

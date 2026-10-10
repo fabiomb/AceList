@@ -265,3 +265,41 @@ def test_adding_keeps_explore_in_the_address_bar(web, db, listed, engine_down, f
     assert added.headers["HX-Push-Url"] == pushed
     assert nothing.status_code == 422 and nothing.headers["HX-Push-Url"] == pushed
     assert "HX-Push-Url" not in web.get("/explore").headers
+
+
+def test_removing_entries_from_explorar(web, db, listed):
+    page = web.post(
+        "/explore/remove", data={"entry": [entry_id(db, "Uno HD")], "q": "", "page": "1"}
+    )
+
+    assert page.status_code == 200
+    assert "1 canal quitado de sus fuentes" in page.text
+    assert "Uno HD" not in page.text.split('class="channels explore"')[-1]
+    assert page.headers["HX-Push-Url"] == "http://127.0.0.1/explore"
+    assert db.query(Channel).count() == 1  # the catalog is not touched
+
+    sources_page = web.get("/explore/sources").text
+    assert "1 quitado" in sources_page and "Restaurar quitados" in sources_page
+
+
+def test_removing_nothing_is_rejected(web, db, listed):
+    page = web.post("/explore/remove", data={"q": ""})
+
+    assert page.status_code == 422 and "Elige al menos un canal." in page.text
+
+
+def test_the_explore_form_offers_to_remove(web, db, listed):
+    page = web.get("/explore").text
+
+    assert 'formaction="http://127.0.0.1/explore/remove"' in page
+
+
+def test_restoring_from_the_sources_page(web, db, listed):
+    web.post("/explore/remove", data={"entry": [entry_id(db, "Uno HD")]})
+    source_id = db.query(Source).one().id
+
+    page = web.post(f"/explore/sources/{source_id}/restore").text
+
+    assert "Restaurar quitados" not in page
+    assert "Uno HD" in web.get("/explore").text
+    assert web.post("/explore/sources/99/restore").status_code == 404
