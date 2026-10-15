@@ -5,7 +5,23 @@ Todos los cambios relevantes del proyecto se registran aquí. Formato basado en 
 ## [Sin publicar]
 
 ### Agregado
-- MIT license (`LICENSE`), declared in `pyproject.toml` and shipped as `LICENSE.txt` next to `AceList.exe` in the Windows zip.
+- MIT license (`LICENSE`), declared in `pyproject.toml` and shipped as `LICENSE.txt` in the
+  Windows and Linux packages.
+- Paquete Linux x86-64 en modo carpeta con PyInstaller, tarball versionado, suma SHA-256 y smoke
+  test del binario contra las páginas principales y una base de datos descartable.
+- Workflow de GitHub Actions que construye y prueba el paquete en Ubuntu 22.04, publica el
+  artefacto en cada cambio pertinente y lo adjunta a las releases con attestación de procedencia.
+- `start.sh` crea el entorno virtual, instala o actualiza dependencias cuando cambia
+  `pyproject.toml` y usa el mismo launcher que el ejecutable.
+- Autodetección del engine Linux como `acestreamengine` en `PATH` y en ubicaciones habituales bajo
+  `/usr` y `/opt`; al iniciarlo usa el modo `--client-console`.
+- La matriz de CI ejecuta lint y tests tanto en Ubuntu como en Windows.
+
+### Cambiado
+- El ejecutable guarda sus datos según la plataforma: `%LOCALAPPDATA%\AceList` en Windows y
+  `$XDG_DATA_HOME/AceList` (o `~/.local/share/AceList`) en Linux.
+- Los textos de errores y la documentación ya no suponen que VLC, ffmpeg y Ace Stream terminan en
+  `.exe`.
 
 ## [1.5.0] - 2026-10-11
 

@@ -390,7 +390,7 @@ def play(
             client, content_id, kind=kind, title=title, vlc_path=settings.vlc_path
         )
     except player.VlcNotFoundError:
-        error = "No se encontró VLC. Instálalo o indica la ruta de vlc.exe en Ajustes."
+        error = "No se encontró VLC. Instálalo o indica la ruta del ejecutable en Ajustes."
     except ContentNotFoundError:
         error = "El engine no pudo cargar este Content ID: puede que el enlace haya muerto."
     except EngineError:

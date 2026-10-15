@@ -1,3 +1,5 @@
+import sys
+
 import httpx
 import pytest
 
@@ -114,6 +116,12 @@ def test_opens_the_playback_url_in_vlc_without_a_shell(client, engine, vlc):
     [(command, kwargs)] = launcher.calls
     assert command == [vlc, "--meta-title=Canal", PLAYBACK]
     assert "shell" not in kwargs
+    if sys.platform == "win32":
+        assert "creationflags" in kwargs
+        assert "start_new_session" not in kwargs
+    else:
+        assert kwargs["start_new_session"] is True
+        assert "creationflags" not in kwargs
     assert stream.content_id == HASH
     assert engine.getstream.calls.last.request.url.params["id"] == HASH
     # VLC is now reading the session: it must not be stopped.

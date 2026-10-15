@@ -1,11 +1,11 @@
 import os
 import sys
 from collections.abc import Mapping
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 
-# True inside the Windows executable built with PyInstaller (see docs/packaging.md).
+# True inside an executable built with PyInstaller (see docs/packaging.md).
 FROZEN = bool(getattr(sys, "frozen", False))
 
 
@@ -17,7 +17,11 @@ def resource_dir(frozen: bool = FROZEN) -> Path:
     return Path(getattr(sys, "_MEIPASS", ROOT_DIR)) if frozen else ROOT_DIR
 
 
-def default_data_dir(frozen: bool = FROZEN, environ: Mapping[str, str] = os.environ) -> Path:
+def default_data_dir(
+    frozen: bool = FROZEN,
+    environ: Mapping[str, str] = os.environ,
+    platform: str = sys.platform,
+) -> Path:
     """Where the database and screenshots go unless `ACELIST_DATA_DIR` says otherwise.
 
     The executable keeps them in the user's profile, so replacing the program folder on
@@ -25,8 +29,15 @@ def default_data_dir(frozen: bool = FROZEN, environ: Mapping[str, str] = os.envi
     """
     if not frozen:
         return ROOT_DIR / "data"
-    local = environ.get("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local")
-    return Path(local) / "AceList"
+    if platform == "win32":
+        local = environ.get("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local")
+        return Path(local) / "AceList"
+    # Follow the XDG base-directory convention used by Linux desktops. An absolute
+    # XDG_DATA_HOME is required by the specification; ignore a malformed relative one.
+    xdg_value = environ.get("XDG_DATA_HOME")
+    xdg = Path(xdg_value) if xdg_value and PurePosixPath(xdg_value).is_absolute() else None
+    base = xdg if xdg else Path.home() / ".local" / "share"
+    return base / "AceList"
 
 
 RESOURCE_DIR = resource_dir()

@@ -28,7 +28,7 @@ dev = [
     "respx>=0.21",
     "ruff>=0.6",
 ]
-# To build the Windows executable (windows/build.py) and redraw its icon.
+# To build the Windows or Linux executable and redraw the Windows icon.
 build = [
     "pyinstaller==6.22.3",
     "pillow>=10",

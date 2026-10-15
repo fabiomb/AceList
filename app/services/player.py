@@ -1,6 +1,7 @@
 import os
 import shutil
 import subprocess
+import sys
 from collections.abc import Callable, Iterable
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -56,7 +57,7 @@ def open_in_player(
     content_id = parse_content_id(content_id)
     vlc = vlc_path or find_vlc()
     if not vlc:
-        raise VlcNotFoundError("VLC not found: install it or set ACELIST_VLC_PATH to vlc.exe")
+        raise VlcNotFoundError("VLC not found: install it or set ACELIST_VLC_PATH")
 
     stream = client.start_stream(content_id, kind)
     if urlsplit(stream.playback_url).scheme not in ("http", "https"):
@@ -70,14 +71,19 @@ def open_in_player(
         command.append(f"--meta-title={title}")
     command.append(stream.playback_url)
     try:
+        options = {
+            "stdin": subprocess.DEVNULL,
+            "stdout": subprocess.DEVNULL,
+            "stderr": subprocess.DEVNULL,
+            "close_fds": True,
+        }
+        if sys.platform == "win32":
+            options["creationflags"] = getattr(subprocess, "DETACHED_PROCESS", 0)
+        else:
+            options["start_new_session"] = True
         launcher(
             command,
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            close_fds=True,
-            # On Windows VLC must outlive the app's console; elsewhere the flag is 0.
-            creationflags=getattr(subprocess, "DETACHED_PROCESS", 0),
+            **options,
         )
     except OSError as exc:
         _stop_quietly(client, stream)

@@ -12,12 +12,12 @@ Aplicación local para catalogar enlaces Acestream (Content ID), verificar si si
 - Listado, edición, borrado, orden y filtros.
 - Categoría, idioma y país por canal.
 - Botón para abrir el canal en un reproductor externo (VLC).
-- Funcionamiento en Windows con Ace Stream Media Center instalado.
+- Funcionamiento en Windows y Linux con Ace Stream Engine instalado.
 
 **Fuera de alcance (por ahora)**
 
 - Acceso remoto, multiusuario, autenticación.
-- Empaquetado para macOS/Linux (se evita código específico de Windows donde sea posible).
+- Empaquetado para macOS.
 - Descubrimiento automático de canales.
 
 ## 2. Decisiones de arquitectura
