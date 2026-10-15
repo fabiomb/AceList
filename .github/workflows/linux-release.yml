@@ -1,0 +1,81 @@
+name: Linux executable
+
+on:
+  pull_request:
+    paths:
+      - "app/**"
+      - "migrations/**"
+      - "linux/**"
+      - "LICENSE"
+      - "alembic.ini"
+      - "pyproject.toml"
+      - ".github/workflows/linux-release.yml"
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install dependencies
+        run: python -m pip install -e ".[build]"
+
+      - name: Read the version
+        id: version
+        shell: bash
+        run: |
+          version="$(python -c 'import app; print(app.__version__)')"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [[ "${{ github.event_name }}" == release ]]; then
+            tag="${{ github.event.release.tag_name }}"
+            if [[ "$tag" != "v$version" ]]; then
+              echo "Release tag $tag does not match app.__version__ $version" >&2
+              exit 1
+            fi
+          fi
+
+      - name: Build
+        run: python linux/build.py
+
+      - name: Smoke test
+        run: python linux/smoke_test.py --expect-version "${{ steps.version.outputs.version }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AceList-${{ steps.version.outputs.version }}-linux-x86_64
+          path: |
+            dist/AceList-*-linux-x86_64.tar.gz
+            dist/AceList-*-linux-x86_64.tar.gz.sha256
+          if-no-files-found: error
+
+      - name: Attest provenance
+        if: github.event_name == 'release' && !github.event.repository.private
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: dist/AceList-*-linux-x86_64.tar.gz
+
+      - name: Attach to the release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" \
+            dist/AceList-*-linux-x86_64.tar.gz \
+            dist/AceList-*-linux-x86_64.tar.gz.sha256 \
+            --clobber

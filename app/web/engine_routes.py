@@ -68,7 +68,7 @@ def engine_start(request: Request, probe: EngineProbeDep, settings: SettingsDep)
         return _indicator(request, settings, version)  # already running
     executable = engine_executable(settings)
     if executable is None:
-        error = "No se encontró ace_engine.exe: indica su ruta en Ajustes."
+        error = "No se encontró el ejecutable de Ace Stream: indica su ruta en Ajustes."
         return _indicator(request, settings, None, error=error)
     try:
         install.start_engine(executable)

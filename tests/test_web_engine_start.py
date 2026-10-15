@@ -57,12 +57,22 @@ def engine(web, monkeypatch):
 def test_start_engine_launches_it_without_a_shell(exe):
     launcher = Launcher()
 
-    start_engine(exe, launcher=launcher)
+    start_engine(exe, launcher=launcher, platform="win32")
 
     [(command, kwargs)] = launcher.calls
     assert command == [exe]
     assert "shell" not in kwargs
     assert kwargs["cwd"].endswith("engine")
+
+
+def test_start_engine_uses_console_mode_on_linux(exe):
+    launcher = Launcher()
+
+    start_engine(exe, launcher=launcher, platform="linux")
+
+    [(command, _)] = launcher.calls
+    assert command == [exe, "--client-console"]
+    assert launcher.calls[0][1]["start_new_session"] is True
 
 
 def test_start_engine_needs_the_file(tmp_path):
@@ -140,7 +150,7 @@ def test_start_without_an_executable_says_where_to_set_it(web, engine, monkeypat
 
     fragment = web.post("/engine/start").text
 
-    assert "No se encontró ace_engine.exe" in fragment
+    assert "No se encontró el ejecutable de Ace Stream" in fragment
     assert engine.launched == []
 
 

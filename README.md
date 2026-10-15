@@ -22,16 +22,48 @@ Catálogo local de enlaces Acestream. Valida el Content ID, comprueba si hay pee
 
 ## Requisitos
 
-- Windows 10 u 11 de 64 bits.
-- [Ace Stream Media](https://www.acestream.org/) instalado (su engine responde en `http://127.0.0.1:6878`). AceList puede abrirlo con el botón **Iniciar** de la barra superior.
+- Linux x86-64 o Windows 10/11 de 64 bits.
+- [Ace Stream](https://www.acestream.org/) instalado (su engine debe responder en `http://127.0.0.1:6878`). AceList puede abrirlo con el botón **Iniciar** de la barra superior.
 - [VLC](https://www.videolan.org/vlc/) para reproducir.
 - [ffmpeg](https://ffmpeg.org/download.html) para las capturas (opcional: sin ffmpeg los canales se verifican igual, sin imagen).
 
 No hace falta instalar Python: el ejecutable lo lleva dentro.
 
-## Instalación
+## Instalación en Linux
 
-1. En la página de [releases](https://github.com/fabiomb/AceList/releases/latest), descarga **`AceList-<versión>-win64.zip`**.
+1. En la página de [releases](https://github.com/fabiomb/AceList/releases/latest), descarga **`AceList-<versión>-linux-x86_64.tar.gz`**.
+2. Descomprímelo y ejecuta AceList:
+
+   ```bash
+   tar -xzf AceList-X.Y.Z-linux-x86_64.tar.gz
+   cd AceList
+   ./AceList
+   ```
+
+Se abre el navegador en `http://127.0.0.1:8000/`. Deja la terminal abierta mientras lo uses;
+`Ctrl+C` lo detiene. Los datos se guardan en `~/.local/share/AceList` o en
+`$XDG_DATA_HOME/AceList`, nunca dentro de la carpeta descomprimida.
+
+AceList detecta `vlc`, `ffmpeg` y `acestreamengine` en `PATH`. Para el engine también revisa
+`/usr/bin`, `/usr/local/bin` y `/opt/acestream`. Si tu instalación usa otra ruta o URL, indícala
+en **Ajustes**. El engine también puede quedar iniciado por separado.
+
+Opciones:
+
+```bash
+./AceList --port 8080
+./AceList --no-browser
+```
+
+Para verificar la descarga:
+
+```bash
+sha256sum -c AceList-X.Y.Z-linux-x86_64.tar.gz.sha256
+```
+
+## Instalación en Windows
+
+1. En la página de releases, descarga **`AceList-<versión>-win64.zip`**.
 2. Descomprímelo donde quieras, por ejemplo en `Documentos\AceList`.
 3. Haz doble clic en **`AceList.exe`**.
 
@@ -47,14 +79,14 @@ AceList todavía no está firmado digitalmente, así que la primera vez Windows 
 Para comprobar que el zip es el original, compara su huella con la del archivo `.sha256` publicado junto a él:
 
 ```powershell
-Get-FileHash .\AceList-1.3.0-win64.zip -Algorithm SHA256
+Get-FileHash .\AceList-1.5.0-win64.zip -Algorithm SHA256
 ```
 
-### Tus datos
+### Tus datos en Windows
 
 La base de datos y las capturas se guardan en **`%LOCALAPPDATA%\AceList`** (escribe esa ruta en la barra del Explorador para abrirla), no en la carpeta del programa. Para hacer una copia de seguridad, copia esa carpeta o usa **Exportar** en el listado.
 
-### Actualizar
+### Actualizar en Windows
 
 Cierra AceList, borra la carpeta del programa y descomprime la versión nueva en su lugar. Tus canales siguen en `%LOCALAPPDATA%\AceList` y la versión nueva actualiza la base de datos sola al arrancar.
 
@@ -65,7 +97,7 @@ Esa versión guarda los datos en la carpeta `data\` del código. Para llevarlos 
 - **Exportar e importar:** en la versión vieja, **Exportar** en el listado; en el ejecutable, sube el archivo en **Importar**. Se pasan los canales con todos sus datos, pero no el historial ni las capturas.
 - **Copiar la carpeta:** con las dos versiones cerradas, copia el contenido de `data\` (`acelist.db` y `screenshots\`) a `%LOCALAPPDATA%\AceList`. Se pasa todo, incluido el historial.
 
-### Opciones
+### Opciones en Windows
 
 ```powershell
 .\AceList.exe --port 8080      # usar ese puerto
@@ -74,16 +106,17 @@ Esa versión guarda los datos en la carpeta `data\` del código. Para llevarlos 
 
 ### Desinstalar
 
-Borra la carpeta del programa. Si tampoco quieres conservar tus canales, borra `%LOCALAPPDATA%\AceList`.
+Borra la carpeta del programa. Si tampoco quieres conservar tus canales, borra
+`~/.local/share/AceList` en Linux o `%LOCALAPPDATA%\AceList` en Windows.
 
 ## Desde el código
 
 Si prefieres ejecutarlo desde el código fuente (necesita [Python](https://www.python.org/downloads/) 3.11 o superior):
 
 1. Descarga o clona el repositorio.
-2. Haz doble clic en **`start.bat`**.
+2. En Linux ejecuta `./start.sh`; en Windows haz doble clic en **`start.bat`**.
 
-La primera vez crea el entorno virtual e instala las dependencias (tarda un minuto). Después aplica las migraciones, arranca el servidor y abre el navegador. Los datos quedan en la carpeta `data\` del repositorio. Desde PowerShell, `.\start.ps1 -Port 8080` usa otro puerto y `.\start.ps1 -NoBrowser` no abre el navegador.
+La primera vez crea el entorno virtual e instala las dependencias (tarda un minuto). Después aplica las migraciones, arranca el servidor y abre el navegador. Los datos quedan en la carpeta `data/` del repositorio. En Linux, `./start.sh --port 8080 --no-browser` pasa las opciones al launcher; en PowerShell se usan `-Port 8080` y `-NoBrowser`.
 
 ## Uso
 
@@ -113,12 +146,12 @@ Los valores de *Ajustes* se guardan en la base de datos y tienen prioridad. Las 
 
 | Variable | Por defecto | Uso |
 |----------|-------------|-----|
-| `ACELIST_DATA_DIR` | `%LOCALAPPDATA%\AceList` (ejecutable) o `data` (código) | Carpeta de la base de datos (`acelist.db`) y las capturas (`screenshots/`). |
-| `ACELIST_PORT` | `8000` | Puerto local con `start.bat`; el ejecutable usa `--port`. |
+| `ACELIST_DATA_DIR` | datos de usuario (ejecutable) o `data` (código) | Carpeta de la base de datos (`acelist.db`) y las capturas (`screenshots/`). En Linux respeta `XDG_DATA_HOME`; en Windows usa `LOCALAPPDATA`. |
+| `ACELIST_PORT` | `8000` | Puerto local; el ejecutable y `start.sh` aceptan `--port`. |
 | `ACELIST_ENGINE_URL` | `http://127.0.0.1:6878` | URL del engine de Ace Stream. |
 | `ACELIST_ENGINE_TIMEOUT` | `15` | Segundos de espera de cada petición al engine. |
-| `ACELIST_VLC_PATH` | autodetección | Ruta de `vlc.exe`. |
-| `ACELIST_FFMPEG_PATH` | `PATH` | Ruta de `ffmpeg.exe`. |
+| `ACELIST_VLC_PATH` | autodetección | Ruta del ejecutable de VLC. |
+| `ACELIST_FFMPEG_PATH` | `PATH` | Ruta del ejecutable de ffmpeg. |
 | `ACELIST_SCREENSHOT_TIMEOUT` | `30` | Segundos máximos para sacar una captura. |
 | `ACELIST_CHECK_CONCURRENCY` | `2` | Verificaciones simultáneas en segundo plano. |
 
@@ -138,10 +171,10 @@ No hay usuarios ni contraseñas: no lo expongas a la red.
 
 | Síntoma | Qué revisar |
 |---------|-------------|
-| "Ace Stream apagado" en la barra superior | Pulsa **Iniciar**, o abre Ace Stream a mano. Si no hay botón, indica la ruta de `ace_engine.exe` en *Ajustes*. |
+| "Ace Stream apagado" en la barra superior | Pulsa **Iniciar**, o abre Ace Stream a mano. Si no hay botón, indica la ruta de su ejecutable en *Ajustes*. |
 | El indicador está en verde pero todo sale en "Error" | En *Ajustes*, revisa la URL del engine con **Probar conexión**. |
-| "No se encontró VLC" | Instala VLC o indica la ruta de `vlc.exe` en *Ajustes*. |
-| Canales activos sin captura | ffmpeg no está instalado o no se encuentra: **Autodetectar rutas** en *Ajustes* o indica la ruta de `ffmpeg.exe`. |
+| "No se encontró VLC" | Instala VLC o indica la ruta de su ejecutable en *Ajustes*. |
+| Canales activos sin captura | ffmpeg no está instalado o no se encuentra: **Autodetectar rutas** en *Ajustes* o indica su ruta. |
 | "Windows protegió su PC" al abrir `AceList.exe` | Es SmartScreen con un programa sin firma: **Más información → Ejecutar de todos modos** (ver [Aviso de Windows la primera vez](#aviso-de-windows-la-primera-vez)). |
 | El antivirus bloquea `AceList.exe` | Algunos antivirus desconfían de los programas hechos con PyInstaller (falso positivo). Comprueba el SHA-256 del zip y añade una excepción para la carpeta de AceList. |
 | La consola se cierra con un mensaje de error | Léelo antes de pulsar Enter: suele ser que no hay puertos libres o que la carpeta de datos no se puede escribir. |
@@ -162,7 +195,7 @@ python -m venv .venv
 
 Los tests no necesitan el engine ni ffmpeg: el engine se simula con `respx` y nunca se contacta uno real.
 
-Para compilar el ejecutable: `pip install -e ".[build]"` y `python windows\build.py` (ver [docs/packaging.md](docs/packaging.md)). Al publicar una release en GitHub, el CI lo compila, lo prueba y adjunta el zip.
+Para compilar los ejecutables: `pip install -e ".[build]"` y `python linux/build.py` en Linux o `python windows/build.py` en Windows. Ver [empaquetado para Linux](docs/packaging-linux.md) y [para Windows](docs/packaging.md). Al publicar una release, el CI compila y prueba ambos artefactos.
 
 Stack: Python, FastAPI, SQLite + SQLAlchemy (Alembic), Jinja2 + HTMX, httpx, ffmpeg. Detalle y justificación en [plan.md](plan.md).
 
@@ -185,6 +218,7 @@ El seguimiento se hace con [issues de GitHub](https://github.com/fabiomb/AceList
 - [idea.md](idea.md): idea original.
 - [plan.md](plan.md): alcance, arquitectura, modelo de datos y fases.
 - [docs/engine-api.md](docs/engine-api.md): API del engine de Acestream observada en la práctica.
+- [docs/packaging-linux.md](docs/packaging-linux.md): cómo se empaqueta el ejecutable para Linux.
 - [docs/packaging.md](docs/packaging.md): cómo se empaqueta el ejecutable para Windows.
 - [CHANGELOG.md](CHANGELOG.md): registro de cambios.
 

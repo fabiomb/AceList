@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from app.acestream.install import engine_candidates, find_engine_executable
 from app.db.models import Setting
 from app.services.settings import AppSettings, load_settings, save_settings
@@ -63,13 +65,29 @@ def test_engine_candidates_cover_appdata_and_program_files(monkeypatch):
     monkeypatch.setenv("ProgramFiles", "C:/PF")
     monkeypatch.delenv("ProgramFiles(x86)", raising=False)
 
-    found = [path.as_posix() for path in engine_candidates()]
+    found = [path.as_posix() for path in engine_candidates("win32")]
 
     assert found == [
         "C:/Users/u/AppData/Roaming/ACEStream/engine/ace_engine.exe",
         "C:/Users/u/AppData/Local/ACEStream/engine/ace_engine.exe",
         "C:/PF/ACEStream/engine/ace_engine.exe",
     ]
+
+
+def test_linux_engine_candidates_cover_system_and_opt_locations():
+    assert engine_candidates("linux") == [
+        Path("/usr/bin/acestreamengine"),
+        Path("/usr/local/bin/acestreamengine"),
+        Path("/opt/acestream/start-engine"),
+        Path("/opt/acestream/acestreamengine"),
+    ]
+
+
+def test_linux_engine_can_be_found_on_path(monkeypatch):
+    monkeypatch.setattr("app.acestream.install.shutil.which", lambda name: f"/custom/{name}")
+
+    assert find_engine_executable([], platform="linux") is None
+    assert find_engine_executable(platform="linux") == "/custom/acestreamengine"
 
 
 def test_find_engine_returns_the_first_existing_candidate(tmp_path):

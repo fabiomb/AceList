@@ -1,4 +1,4 @@
-"""AceList.exe: prepares the database, starts the local server and opens the browser.
+"""AceList launcher: prepares the database, starts the local server and opens the browser.
 
 Also runs from source with `python -m app.launcher`. Messages are for the person who
 double-clicked the program, so they are in Spanish.

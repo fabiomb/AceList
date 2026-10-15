@@ -10,16 +10,36 @@ def test_from_source_the_data_stays_in_the_repository():
 
 def test_the_executable_keeps_data_in_the_user_profile():
     data_dir = config.default_data_dir(
-        frozen=True, environ={"LOCALAPPDATA": r"C:\Users\u\AppData\Local"}
+        frozen=True, environ={"LOCALAPPDATA": r"C:\Users\u\AppData\Local"}, platform="win32"
     )
 
     assert data_dir == Path(r"C:\Users\u\AppData\Local") / "AceList"
 
 
 def test_without_localappdata_the_profile_is_found_anyway():
-    data_dir = config.default_data_dir(frozen=True, environ={})
+    data_dir = config.default_data_dir(frozen=True, environ={}, platform="win32")
 
     assert data_dir == Path.home() / "AppData" / "Local" / "AceList"
+
+
+def test_linux_executable_uses_xdg_data_home():
+    data_dir = config.default_data_dir(
+        frozen=True, environ={"XDG_DATA_HOME": "/home/u/.data"}, platform="linux"
+    )
+
+    assert data_dir == Path("/home/u/.data/AceList")
+
+
+def test_linux_executable_falls_back_to_the_standard_user_data_folder():
+    assert config.default_data_dir(frozen=True, environ={}, platform="linux") == (
+        Path.home() / ".local" / "share" / "AceList"
+    )
+
+
+def test_linux_ignores_a_relative_xdg_data_home():
+    assert config.default_data_dir(
+        frozen=True, environ={"XDG_DATA_HOME": "relative"}, platform="linux"
+    ) == (Path.home() / ".local" / "share" / "AceList")
 
 
 def test_resources_come_from_the_repository_when_running_from_source():
